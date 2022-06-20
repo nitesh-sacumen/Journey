@@ -22,9 +22,6 @@ public final class Constants {
     public static final String ACCOUNT_ID = "account_id";
     public static final String IS_ADMIN = "is_admin";
     public static final String FORGEROCK_SESSION_ID = "forgerock_session_id";
-//    public static final String IS_ENROLLMENT = "is_enrollment";
-//    public static final String IS_AUTHENTICATE = "is_authenticate";
-
     public static final String CUSTOMER_JOURNEY_ID = "customer_journey_id";
     public static final String METHOD_NAME = "method_name";
     public static final String FACIAL_BIOMETRIC = "facial-biometrics";
@@ -34,7 +31,6 @@ public final class Constants {
     public static final String JOURNEY_PHONE_NUMBER = "journey_phone_number";
     public static final String FORGEROCK_PHONE_NUMBER = "forgerock_phone_number";
     public static final String DEVICE_ID = "device_id";
-    public static final String EXECUTION_RESULT = "execution_result";
     public static final String CUSTOMER_LOOKUP_RESPONSE_CODE = "customer_lookup_response_code";
     public static final String TYPE = "type";
     public static final String PIPELINE_KEY = "pipeline_key";
