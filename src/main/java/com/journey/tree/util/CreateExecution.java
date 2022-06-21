@@ -55,8 +55,8 @@ public class CreateExecution {
                     }
                     //here apply login to get phone number from foregrock if not avaialble there then user input
                 }
-                delivery.put("method", "email");
-                delivery.put("email", "rahul.parmar@sacumen.com");//hard coded for testing only
+                delivery.put("method", "sms");
+                delivery.put("phoneNumber", phoneNumber);
             } else if (methodName.equalsIgnoreCase(Constants.MOBILE_APP) && deviceId != "") {
                 delivery.put("method", "push-notification");
                 delivery.put("deviceId", deviceId);
