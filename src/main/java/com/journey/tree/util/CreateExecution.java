@@ -25,6 +25,9 @@ public class CreateExecution {
     public String execute(TreeContext context) {
         JsonValue sharedState = context.sharedState;
         try {
+
+            //fetching details from the shared memory
+
             pipelineKey = sharedState.get(Constants.PIPELINE_KEY).asString();
             username = sharedState.get("username").asString();
             if (sharedState.get(Constants.DASHBOARD_ID).isNotNull()) {
@@ -46,23 +49,42 @@ public class CreateExecution {
                 methodName = sharedState.get(Constants.METHOD_NAME).asString();
             }
             delivery = new JSONObject();
+
+             //this code block will only execute if the method received is either
+            // facial-biometrics or one-time-password (only for testing) as both will have
+            // sms as method name and will be requiring phone number
+
             if (methodName.equalsIgnoreCase(Constants.FACIAL_BIOMETRIC) || methodName.equalsIgnoreCase(Constants.ONE_TIME_PASSWORD)) {
+
+                //if the phone number is not present in the customer look up call,
+                // then it will be fetched from the forgerock user profile
+
                 if (phoneNumber == "") {
                     if (sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).isNotNull()) {
                         phoneNumber = sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).asString();
                     } else {
                         //apply code for user input phone number
                     }
-                    //here apply login to get phone number from foregrock if not avaialble there then user input
                 }
+
+                //setting delivery object which will have method name as sms and phone number
+
                 delivery.put("method", "sms");
                 delivery.put("phoneNumber", phoneNumber);
-            } else if (methodName.equalsIgnoreCase(Constants.MOBILE_APP) && deviceId != "") {
+            }
+
+            //this code block will only execute if the method name is mobile app and device id is present
+
+            else if (methodName.equalsIgnoreCase(Constants.MOBILE_APP) && deviceId != "") {
                 delivery.put("method", "push-notification");
                 delivery.put("deviceId", deviceId);
             }
 
-        } catch (Exception e) {
+        }
+
+        //this code block will handle any exception
+
+        catch (Exception e) {
             logger.error(e.getStackTrace().toString());
             e.printStackTrace();
         }
@@ -77,6 +99,10 @@ public class CreateExecution {
         JSONArray callbackUrls;
         try (CloseableHttpClient httpclient = getHttpClient()) {
             jsonObj = new JSONObject();
+
+            //putting the data into the json object
+            //preparing payload for create execution api
+
             jsonObj.put("pipelineKey", pipelineKey);
             jsonObj.put("delivery", delivery);
             customer = new JSONObject();
@@ -87,34 +113,60 @@ public class CreateExecution {
                 jsonObj.put("dashboardId", dashboardId);
             }
             urls = new ArrayList<>();
+
+            //providing empty array will give regex error of missing https, so given localhost address
+            // as the input to callback url
+
             urls.add("https://localhost");//remove this code later
             callbackUrls = new JSONArray(urls);
             jsonObj.put("callbackUrls", callbackUrls);
             jsonObj.put("language", "en-US");
             session = new JSONObject();
+
+            //if the forge rock session id is not empty, it will be passed as payload
+
             if (sharedState.get(Constants.FORGEROCK_SESSION_ID).isNotNull()) {
                 forgeRockSessionId = sharedState.get(Constants.FORGEROCK_SESSION_ID).asString();
                 session.put("externalRef", forgeRockSessionId);
-            } else if (sharedState.get(Constants.CUSTOMER_JOURNEY_ID).isNotNull()) {
+            }
+
+            //if the customer journey id is not empty, it will be passed as payload
+
+            else if (sharedState.get(Constants.CUSTOMER_JOURNEY_ID).isNotNull()) {
                 customerJourneyId = sharedState.get(Constants.CUSTOMER_JOURNEY_ID).asString();
                 session.put("id", customerJourneyId);
                 System.out.println("customer journey id is " + customerJourneyId);//remove this line
             }
             httpPost = createPostRequest(Constants.CREATE_EXECUTION_URL);
+
+            //headers added for the create execution api
+
             httpPost.addHeader("Accept", "application/json");
             httpPost.addHeader("Authorization", "Bearer " + apiAccessToken);
             httpPost.addHeader("Content-Type", "application/json");
             System.out.println(jsonObj.toString(4));
             stringEntity = new StringEntity(jsonObj.toString());
             httpPost.setEntity(stringEntity);
+
+            //here call has been made to create execution api
+
             response = httpclient.execute(httpPost);
+
+            //capturing and logging the create execution api response code
+
             Integer responseCode = response.getStatusLine().getStatusCode();
             System.out.println("create execution response code: " + responseCode);
+
+            //this code block will execute only if the create execution api has a response
+
             if (response != null) {
                 entityResponse = response.getEntity();
                 result = EntityUtils.toString(entityResponse);
                 jsonResponse = new JSONObject(result);
                 System.out.println(jsonResponse.toString(4));
+
+                //this block will check and fetch execution id from the api response
+
                 if (jsonResponse != null && jsonResponse.has("id")) {
                     executionId = (String) jsonResponse.get("id");
                 }
@@ -123,6 +175,9 @@ public class CreateExecution {
             logger.error(e.getStackTrace().toString());
             e.printStackTrace();
         }
+
+        //execution id will be returned to the caller method
+
         return executionId;
     }
 
