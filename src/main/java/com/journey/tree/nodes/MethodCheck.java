@@ -52,14 +52,33 @@ public class MethodCheck implements Node {
     public Action process(TreeContext context) throws NodeProcessException {
         JsonValue sharedState = context.sharedState;
         try {
+
+            //this code block will only execute if it has received enrollment/authentication method name
+
             if (sharedState.get(Constants.METHOD_NAME).isNotNull()) {
+
+                //fetching enrollment/authentication method name
+
                 String methodName = sharedState.get(Constants.METHOD_NAME).asString();
                 logger.debug("method name received is " + methodName);
+
+                //if the method name is facial-biometrics, then connect it with facial biometrics flow
+
                 if (methodName == Constants.FACIAL_BIOMETRIC) {
                     return goTo(MethodCheckOutcome.Facial_Biometrics).replaceSharedState(sharedState).build();
-                } else if (methodName == Constants.ONE_TIME_PASSWORD) {//for testing purpose
+                }
+
+                //if the method name is one time password, then connect it with one time password flow
+
+                //this code block is only for testing
+
+                else if (methodName == Constants.ONE_TIME_PASSWORD) {
                     return goTo(MethodCheckOutcome.One_Time_Password).replaceSharedState(sharedState).build();
-                } else if (methodName == Constants.MOBILE_APP) {
+                }
+
+                //if the method name is mobile app, then connect it with mobile app flow
+
+                else if (methodName == Constants.MOBILE_APP) {
                     return goTo(MethodCheckOutcome.Mobile_App).replaceSharedState(sharedState).build();
                 }
 
@@ -101,6 +120,10 @@ public class MethodCheck implements Node {
     /**
      * Defines the possible outcomes from this EnrollmentMethodCheck node.
      */
+
+
+    //this code will generate 3 outcomes for MethodCheck node
+    // i.e. facial-biometrics, one-time-password (for testing only), mobile app
     public static class MethodCheckOutcomeProvider implements OutcomeProvider {
         @Override
         public List<Outcome> getOutcomes(PreferredLocales locales, JsonValue nodeAttributes) {
