@@ -2,6 +2,7 @@ package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
 import org.apache.http.HttpEntity;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -9,6 +10,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.forgerock.json.JsonValue;
+import org.forgerock.openam.auth.node.api.NodeProcessException;
 import org.forgerock.openam.auth.node.api.TreeContext;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -16,25 +18,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class CreateExecution {
-    private Logger logger = LoggerFactory.getLogger(CreateExecution.class);
-    String pipelineKey, dashboardId = "", username, deviceId = "", forgeRockSessionId = "", apiAccessToken = "", phoneNumber = "", methodName = "", executionId = "";
+    private static final Logger logger = LoggerFactory.getLogger(CreateExecution.class);
+    String pipelineKey, dashboardId = null, uniqueId, deviceId = null, forgeRockSessionId = null, apiAccessToken = null, phoneNumber = null,
+            methodName = null, executionId = null;
     JSONObject delivery;
 
-    public String execute(TreeContext context) {
+    public String execute(TreeContext context) throws NodeProcessException {
         JsonValue sharedState = context.sharedState;
         try {
 
             //fetching details from the shared memory
 
             pipelineKey = sharedState.get(Constants.PIPELINE_KEY).asString();
-            username = sharedState.get("username").asString();
+            uniqueId = sharedState.get(Constants.UNIQUE_ID).asString();
             if (sharedState.get(Constants.DASHBOARD_ID).isNotNull()) {
                 dashboardId = sharedState.get(Constants.DASHBOARD_ID).asString();
             }
             if (sharedState.get(Constants.DEVICE_ID).isNotNull()) {
-                deviceId = sharedState.get(Constants.DEVICE_ID).asString();//code part remaining in enrollment status node
+                deviceId = sharedState.get(Constants.DEVICE_ID).asString();
             }
             if (sharedState.get(Constants.FORGEROCK_SESSION_ID).isNotNull()) {
                 forgeRockSessionId = sharedState.get(Constants.FORGEROCK_SESSION_ID).asString();
@@ -50,34 +54,48 @@ public class CreateExecution {
             }
             delivery = new JSONObject();
 
-             //this code block will only execute if the method received is either
+            //this code block will only execute if the method received is either
             // facial-biometrics or one-time-password (only for testing) as both will have
             // sms as method name and will be requiring phone number
 
-            if (methodName.equalsIgnoreCase(Constants.FACIAL_BIOMETRIC) || methodName.equalsIgnoreCase(Constants.ONE_TIME_PASSWORD)) {
+            if (methodName.equalsIgnoreCase(Constants.FACIAL_BIOMETRIC)) {
 
                 //if the phone number is not present in the customer look up call,
                 // then it will be fetched from the forgerock user profile
 
-                if (phoneNumber == "") {
+                if (phoneNumber == null) {
                     if (sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).isNotNull()) {
                         phoneNumber = sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).asString();
                     } else {
-                        //apply code for user input phone number
+                        logger.debug("phone number is not available");
+                        throw new NodeProcessException("phone number is not available");
                     }
                 }
 
                 //setting delivery object which will have method name as sms and phone number
 
-                delivery.put("method", "sms");
-                delivery.put("phoneNumber", phoneNumber);
+//                delivery.put("method", "sms");
+//                delivery.put("phoneNumber", phoneNumber);
+
+                String email = null;
+                if (sharedState.get(Constants.JOURNEY_EMAIL).isNotNull()) {
+                    email = sharedState.get(Constants.JOURNEY_EMAIL).asString();
+                } else if (sharedState.get(Constants.FORGEROCK_EMAIL).isNotNull()) {
+                    email = sharedState.get(Constants.FORGEROCK_EMAIL).asString();
+                }
+                //hard coded for testing purpose
+                delivery.put("method", "email");
+                delivery.put("email", email);
             }
 
             //this code block will only execute if the method name is mobile app and device id is present
 
-            else if (methodName.equalsIgnoreCase(Constants.MOBILE_APP) && deviceId != "") {
+            else if (methodName.equalsIgnoreCase(Constants.MOBILE_APP) && deviceId != null) {
                 delivery.put("method", "push-notification");
                 delivery.put("deviceId", deviceId);
+            } else {
+                logger.debug("no device id found");
+                throw new NodeProcessException("no device id found");
             }
 
         }
@@ -85,11 +103,11 @@ public class CreateExecution {
         //this code block will handle any exception
 
         catch (Exception e) {
-            logger.error(e.getStackTrace().toString());
-            e.printStackTrace();
+            logger.error(Arrays.toString(e.getStackTrace()));
+            throw new NodeProcessException("Exception is: " + e);
         }
         HttpEntity entityResponse;
-        String result, customerJourneyId = "";
+        String result, customerJourneyId;
         JSONObject jsonResponse;
         JSONObject jsonObj, customer, session;
         HttpPost httpPost;
@@ -106,10 +124,9 @@ public class CreateExecution {
             jsonObj.put("pipelineKey", pipelineKey);
             jsonObj.put("delivery", delivery);
             customer = new JSONObject();
-            System.out.println("username is " + username);
-            customer.put("uniqueId", username);
+            customer.put("uniqueId", uniqueId);
             jsonObj.put("customer", customer);
-            if (dashboardId != "") {
+            if (dashboardId != null) {
                 jsonObj.put("dashboardId", dashboardId);
             }
             urls = new ArrayList<>();
@@ -117,7 +134,7 @@ public class CreateExecution {
             //providing empty array will give regex error of missing https, so given localhost address
             // as the input to callback url
 
-            urls.add("https://localhost");//remove this code later
+            urls.add("https://localhost");
             callbackUrls = new JSONArray(urls);
             jsonObj.put("callbackUrls", callbackUrls);
             jsonObj.put("language", "en-US");
@@ -125,8 +142,7 @@ public class CreateExecution {
 
             //if the forge rock session id is not empty, it will be passed as payload
 
-            if (sharedState.get(Constants.FORGEROCK_SESSION_ID).isNotNull()) {
-                forgeRockSessionId = sharedState.get(Constants.FORGEROCK_SESSION_ID).asString();
+            if (forgeRockSessionId != null) {
                 session.put("externalRef", forgeRockSessionId);
             }
 
@@ -135,8 +151,8 @@ public class CreateExecution {
             else if (sharedState.get(Constants.CUSTOMER_JOURNEY_ID).isNotNull()) {
                 customerJourneyId = sharedState.get(Constants.CUSTOMER_JOURNEY_ID).asString();
                 session.put("id", customerJourneyId);
-                System.out.println("customer journey id is " + customerJourneyId);//remove this line
             }
+            jsonObj.put("session", session);
             httpPost = createPostRequest(Constants.CREATE_EXECUTION_URL);
 
             //headers added for the create execution api
@@ -144,7 +160,6 @@ public class CreateExecution {
             httpPost.addHeader("Accept", "application/json");
             httpPost.addHeader("Authorization", "Bearer " + apiAccessToken);
             httpPost.addHeader("Content-Type", "application/json");
-            System.out.println(jsonObj.toString(4));
             stringEntity = new StringEntity(jsonObj.toString());
             httpPost.setEntity(stringEntity);
 
@@ -155,25 +170,23 @@ public class CreateExecution {
             //capturing and logging the create execution api response code
 
             Integer responseCode = response.getStatusLine().getStatusCode();
-            System.out.println("create execution response code: " + responseCode);
+            logger.debug("create execution response code: " + responseCode);
 
             //this code block will execute only if the create execution api has a response
 
-            if (response != null) {
-                entityResponse = response.getEntity();
-                result = EntityUtils.toString(entityResponse);
-                jsonResponse = new JSONObject(result);
-                System.out.println(jsonResponse.toString(4));
+            entityResponse = response.getEntity();
+            result = EntityUtils.toString(entityResponse);
+            jsonResponse = new JSONObject(result);
 
-                //this block will check and fetch execution id from the api response
+            //this block will check and fetch execution id from the api response
 
-                if (jsonResponse != null && jsonResponse.has("id")) {
-                    executionId = (String) jsonResponse.get("id");
-                }
+            if (jsonResponse.has("id")) {
+                executionId = (String) jsonResponse.get("id");
             }
+
         } catch (Exception e) {
-            logger.error(e.getStackTrace().toString());
-            e.printStackTrace();
+            logger.error(Arrays.toString(e.getStackTrace()));
+            throw new NodeProcessException("Exception is: " + e);
         }
 
         //execution id will be returned to the caller method
@@ -190,9 +203,9 @@ public class CreateExecution {
     }
 
     public CloseableHttpClient buildDefaultClient() {
-        logger.debug("requesting http client connection client open");
-
+        Integer timeout = Constants.REQUEST_TIMEOUT;
+        RequestConfig config = RequestConfig.custom().setConnectTimeout(timeout * 1000).setConnectionRequestTimeout(timeout * 1000).setSocketTimeout(timeout * 1000).build();
         HttpClientBuilder clientBuilder = HttpClientBuilder.create();
-        return clientBuilder.build();
+        return clientBuilder.setDefaultRequestConfig(config).build();
     }
 }

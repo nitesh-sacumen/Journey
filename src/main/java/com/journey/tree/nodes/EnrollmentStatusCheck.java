@@ -4,6 +4,8 @@ package com.journey.tree.nodes;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.assistedinject.Assisted;
 import com.journey.tree.config.Constants;
+import com.journey.tree.util.*;
+import com.sun.identity.authentication.callbacks.ScriptTextOutputCallback;
 import com.sun.identity.authentication.client.AuthClientUtils;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.annotations.sm.Attribute;
@@ -11,18 +13,22 @@ import org.forgerock.openam.auth.node.api.Action;
 import org.forgerock.openam.auth.node.api.Node;
 import org.forgerock.openam.auth.node.api.NodeProcessException;
 import org.forgerock.openam.auth.node.api.TreeContext;
+import org.forgerock.openam.core.CoreWrapper;
 import org.forgerock.util.i18n.PreferredLocales;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.journey.tree.util.JourneyCustomerLookUp;
-import com.journey.tree.util.JourneyGetAccessToken;
 
 import javax.inject.Inject;
+import javax.security.auth.callback.Callback;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
+
+import static org.forgerock.openam.auth.node.api.Action.send;
+import static org.forgerock.openam.auth.node.api.SharedStateConstants.USERNAME;
 
 
 /**
@@ -31,8 +37,9 @@ import java.util.ResourceBundle;
  * @Descrition
  */
 @Node.Metadata(outcomeProvider = EnrollmentStatusCheck.EnrollmentStatusOutcomeProvider.class, configClass = EnrollmentStatusCheck.Config.class)
-public class EnrollmentStatusCheck implements Node {
-    private Logger logger = LoggerFactory.getLogger(AuthClientUtils.class);
+public class EnrollmentStatusCheck extends Thread implements Node {
+    private Logger logger = LoggerFactory.getLogger(EnrollmentStatusCheck.class);
+    private final CoreWrapper coreWrapper;
 
     private static final String BUNDLE = "com/journey/tree/nodes/EnrollmentStatusCheck";
 
@@ -48,222 +55,237 @@ public class EnrollmentStatusCheck implements Node {
         String refreshToken();
 
         @Attribute(order = 200, requiredValue = true)
+        Integer timeToLive();
+
+        @Attribute(order = 300, requiredValue = true)
         String accountId();
 
-    }
+        @Attribute(order = 400, requiredValue = true)
+        String uniqueIdentifier();
 
+        @Attribute(order = 500, requiredValue = true)
+        String adminUsername();
+
+        @Attribute(order = 600, requiredValue = true)
+        String adminPassword();
+
+        @Attribute(order = 700, requiredValue = true)
+        String groupName();
+
+        @Attribute(order = 800, requiredValue = true)
+        Integer retrieveTimeout();
+
+        @Attribute(order = 900, requiredValue = true)
+        Integer retrieveDelay();
+
+    }
     @Inject
-    public EnrollmentStatusCheck(@Assisted Config config) {
+    public EnrollmentStatusCheck(@Assisted Config config, CoreWrapper coreWrapper) {
         this.config = config;
+        this.coreWrapper = coreWrapper;
     }
 
     @Override
 
     public Action process(TreeContext context) throws NodeProcessException {
-        //if refresh token/accountId is empty, the flow will not proceed
-        if (config.refreshToken() == null || config.accountId() == null) {
-            logger.error("Please configure refresh token/account id to proceed");
-            System.out.println("Please configure refresh token/account id to proceed");
-            return null;
+        logger.debug("*********************Enrollment Status Check********************");
+        if (config.refreshToken() == null || config.accountId() == null || config.uniqueIdentifier() == null || config.adminUsername() == null || config.adminPassword() == null || config.groupName() == null) {
+            logger.error("Please configure refresh token/timeToLive/account id/unique identifier/adminUsername/adminPassword/groupName/retrieveTimeout/retrieveDelay to proceed");
+            throw new NodeProcessException("Please configure refresh token/timeToLive/account id/unique identifier/adminUsername/adminPassword/groupName/retrieveTimeout/retrieveDelay to proceed");
         }
         JsonValue sharedState = context.sharedState;
-        String refreshToken = config.refreshToken();
-        sharedState.put(Constants.REFRESH_TOKEN, refreshToken);
-        String username = sharedState.get("username").asString();
-        String accountId = config.accountId();
-        sharedState.put(Constants.ACCOUNT_ID, accountId);
-        Boolean flag = false;
-        String token = "";
-        JSONObject jsonResponse;
-        JourneyGetAccessToken journeyGetAccessToken = new JourneyGetAccessToken();
-        try {
-            //making call to getAccessToken method of JourneyGetAccessToken to get the token
-            jsonResponse = journeyGetAccessToken.getAccessToken(context);
-            if (jsonResponse.has("token")) {
-                token = jsonResponse.getString("token");
-               logger.debug("token is " + token);
-                sharedState.put(Constants.API_ACCESS_TOKEN, token);
-            }
-        //this code block will only execute if we have a token
-
-        if (token != "") {
-            JourneyCustomerLookUp journeyCustomerLookUp = new JourneyCustomerLookUp();
-
-            //calling customerLookUp method
-
-            jsonResponse = journeyCustomerLookUp.customerLookUp(context);
-
-            // of JourneyCustomerLookUp class which will make call to customer lookup api
-
-            if (jsonResponse != null) {
-
-                //setting enrollment/authentication priority array for admin user
-
-                ArrayList<String> adminUserPriorities = new ArrayList<>();
-                adminUserPriorities.add(Constants.FACIAL_BIOMETRIC);
-
-                //for testing purpose
-
-                adminUserPriorities.add(Constants.ONE_TIME_PASSWORD);
-                adminUserPriorities.add(Constants.MOBILE_APP);
-
-                //setting enrollment/authentication priority array for non admin user
-
-                ArrayList<String> otherUserPriorities = new ArrayList<>();
-
-                //for testing purpose
-
-                otherUserPriorities.add(Constants.ONE_TIME_PASSWORD);
-                otherUserPriorities.add(Constants.MOBILE_APP);
-
-                //hard coded for now, fetch user roles from forgerock
-
-                String userRoles = "{admin}";
-                Boolean isAdmin = userRoles.contains("admin");
-                sharedState.put(Constants.IS_ADMIN, isAdmin);
-                String forgeRockUserPhoneNumber;
-
-                //hard coded for now, fetch forgerock user phone number
-
-                forgeRockUserPhoneNumber = "+919812345678";
-                sharedState.put(Constants.FORGEROCK_PHONE_NUMBER, forgeRockUserPhoneNumber);
-
-                //fetching response code of customer lookup call api
-
-                Integer responseCode = sharedState.get(Constants.CUSTOMER_LOOKUP_RESPONSE_CODE).asInteger();
-
-                //response code 464 means that the customer is non existant
-                //so he will be directly connected with no enrollments flow
-
-                if (responseCode == 464)
-                {
-                    logger.debug("nonexistant customer::" + username);
-
-                    //if the user is admin then assign first method name from the admin priority array
-
-                    if (isAdmin) {
-                        sharedState.put(Constants.METHOD_NAME, adminUserPriorities.get(0));
-                    }
-
-                    //if the user is non admin then assign first method name from the non admin priority array
-
-                    else {
-                        sharedState.put(Constants.METHOD_NAME, otherUserPriorities.get(0));
-                    }
-
+        String username = context.sharedState.get(USERNAME).asString();
+        Integer counter;
+        if (sharedState.get(Constants.COUNTER).isNull()) {
+            counter = 1;
+            sharedState.put(Constants.COUNTER, counter);
+        } else {
+            counter = sharedState.get(Constants.COUNTER).asInteger();
+            counter++;
+            sharedState.put(Constants.COUNTER, counter);
+        }
+        if (counter == 1) {
+            {
+                Boolean flag;
+                flag = ForgerockUser.getDetails(username, coreWrapper, context);
+                if (!flag) {
+                    sharedState.put(Constants.ERROR_MESSAGE, "Invalid forgerock username/ minimum length should be 8 characters");
+                    return goTo(EnrollmentStatusCheck.EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
                 }
-                //this code block will execute if the customer is already registered with journey
-
-                else {
-                    try {
-                        JSONArray enrollments;
-                        String forgeRockSessionId = "";//hard coded, fetch session id from forgerock
-                        sharedState.put(Constants.FORGEROCK_SESSION_ID, forgeRockSessionId);
-                        String customerJourneyId;
-
-                        //fetching customer's journey id from the customer lookup api response
-
-                        if (jsonResponse.has("id")) {
-                            customerJourneyId = (String) jsonResponse.get("id");
-                            sharedState.put(Constants.CUSTOMER_JOURNEY_ID, customerJourneyId);
-                        }
-
-                        //fetching customer's phone number from the customer lookup api response
-
-                        if (jsonResponse.has("phoneNumbers")) {
-                            JSONArray phoneNumbers = (JSONArray) jsonResponse.get("phoneNumbers");
-                            if (phoneNumbers.length() > 0) {
-                                String phoneNumber = phoneNumbers.getString(0);
-                                sharedState.put(Constants.JOURNEY_PHONE_NUMBER, phoneNumber);
-                            }
-                        }
-                        //fetching customer's enrollments from the customer lookup api response
-
-                        //this code block will only execute if the customer is having any enrollments
-
-                        if (jsonResponse.has("enrollments")) {
-
-                            //fetching the enrollments
-
-                            enrollments = (JSONArray) jsonResponse.get("enrollments");
-
-                            // this code block will ensure that the user enrollment/authentication policy set by the forgerock admin will be implemented
-                            // as an example we are considering here that a forgerock admin set up the policy where admin users can only enroll/authenticate
-                            // only via facial-biometrics/mobile app and any other user will be using mobile app method for enrollment/authentication
-
-                            System.out.println("existing enrollments are:: " + enrollments.toString());
-
-                            //if the customer has admin role
-
-                            if (isAdmin) {
-
-                                //methodCheck method will receive priorities array along with existing enrollments
-                                // to determine if the customer should be connected with has or no enrollments
-
-                                //if the flag value returned is true then the customer will be connected with has enrollments
-                                // else no enrollments in case of flag value false
-
-                                flag = methodCheck(adminUserPriorities, enrollments, sharedState);
-                            }
-
-                            //if the user doesnt has admin role
-
-
-                            else
-                            {
-                                flag = methodCheck(otherUserPriorities, enrollments, sharedState);
-                            }
-                        }
-
-                        //this code block will only execute if the customer doesn't have any enrollment
-
-                        else {
+            }
+            String adminUsername = config.adminUsername();
+            String adminPassword = config.adminPassword();
+            ForgerockToken forgerockToken = new ForgerockToken();
+            forgerockToken.getToken(adminUsername, adminPassword, context);
+            List<Callback> cbList = new ArrayList<>();
+            ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1());
+            cbList.add(scriptTextOutputCallback);
+            return send(ImmutableList.copyOf(cbList)).build();
+        } else if (counter == 2) {
+            sharedState.put(Constants.COUNTER, null);
+            sharedState.put(Constants.RETRIEVE_TIMEOUT,config.retrieveTimeout());
+            sharedState.put(Constants.RETRIEVE_DELAY,config.retrieveDelay());
+            String tokenId = sharedState.get(Constants.TOKEN_ID).asString();
+            String groupName = config.groupName();
+            String uniqueIdentifier = config.uniqueIdentifier();
+            logger.debug("selected unique identifier is: " + uniqueIdentifier);
+            if (uniqueIdentifier.equalsIgnoreCase(Constants.UNIQUE_IDENTIFIER_USERNAME)) {
+                sharedState.put(Constants.UNIQUE_ID, username);
+            } else if (uniqueIdentifier.equalsIgnoreCase(Constants.UNIQUE_IDENTIFIER_EMAIL)) {
+                if (sharedState.get(Constants.FORGEROCK_EMAIL).isNotNull()) {
+                    sharedState.put(Constants.UNIQUE_ID, sharedState.get(Constants.FORGEROCK_EMAIL));
+                } else {
+                    sharedState.put(Constants.ERROR_MESSAGE, "Forgerock email id is required to proceed");
+                    return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                }
+            } else if (uniqueIdentifier.equalsIgnoreCase(Constants.UNIQUE_IDENTIFIER_FORGEROCK_ID)) {
+                if (sharedState.get(Constants.FORGEROCK_ID).isNotNull()) {
+                    sharedState.put(Constants.UNIQUE_ID, sharedState.get(Constants.FORGEROCK_ID));
+                } else {
+                    sharedState.put(Constants.ERROR_MESSAGE, "Forgerock id is required to proceed");
+                    return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                }
+            } else {
+                sharedState.put(Constants.ERROR_MESSAGE, "Invalid user identifier provided");
+                return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+            }
+            UserDetails userDetails = new UserDetails();
+            Boolean isAdmin = userDetails.getDetails(context, tokenId, groupName, username);
+            logger.debug("isAdmin status is:: " + isAdmin);
+            sharedState.put(Constants.IS_ADMIN, isAdmin);
+            String refreshToken = config.refreshToken();
+            sharedState.put(Constants.REFRESH_TOKEN, refreshToken);
+            String accountId = config.accountId();
+            sharedState.put(Constants.ACCOUNT_ID, accountId);
+            Boolean flag = false;
+            JSONObject jsonResponse;
+            JourneyGetAccessToken journeyGetAccessToken;
+            JourneyCustomerLookUp journeyCustomerLookUp;
+            String token = null;
+            Integer timeToLive;
+            try {
+                journeyGetAccessToken = new JourneyGetAccessToken();
+                timeToLive = config.timeToLive();
+                jsonResponse = journeyGetAccessToken.getAccessToken(context, timeToLive);
+                if (jsonResponse.has("token")) {
+                    token = jsonResponse.getString("token");
+                    sharedState.put(Constants.API_ACCESS_TOKEN, token);
+                }
+                if (token != null) {
+                    journeyCustomerLookUp = new JourneyCustomerLookUp();
+                    jsonResponse = journeyCustomerLookUp.customerLookUp(context);
+                    if (jsonResponse != null) {
+                        ArrayList<String> adminUserPriorities = Priorities.getAdminUserPriorities();
+                        ArrayList<String> nonAdminUserPriorities = Priorities.getNonAdminUserPriorities();
+                        Integer responseCode = sharedState.get(Constants.CUSTOMER_LOOKUP_RESPONSE_CODE).asInteger();
+                        if (responseCode == 464) {
+                            logger.debug("non existent customer:: " + username);
                             if (isAdmin) {
                                 sharedState.put(Constants.METHOD_NAME, adminUserPriorities.get(0));
                             } else {
-                                sharedState.put(Constants.METHOD_NAME, otherUserPriorities.get(0));
+                                logger.debug("No suitable enrollment method found for non journey existent user");
+                                System.out.println("No suitable enrollment method found for non journey existent user");
+                                sharedState.put(Constants.ERROR_MESSAGE, "No enrollment method found for non journey existent user");
+                                return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                            }
+                        } else {//customer found in journey customer lookup call api
+                            try {
+                                JSONArray enrollments;
+                                String customerJourneyId;
+                                if (jsonResponse.has("id")) {
+                                    customerJourneyId = (String) jsonResponse.get("id");
+                                    sharedState.put(Constants.CUSTOMER_JOURNEY_ID, customerJourneyId);
+                                }
+                                if (jsonResponse.has("phoneNumbers")) {
+                                    JSONArray phoneNumbers = (JSONArray) jsonResponse.get("phoneNumbers");
+                                    if (phoneNumbers.length() > 0) {
+                                        String phoneNumber = phoneNumbers.getString(0);
+                                        sharedState.put(Constants.JOURNEY_PHONE_NUMBER, phoneNumber);
+                                    }
+                                }
+                                if (jsonResponse.has("devices")) {
+                                    JSONArray devices = (JSONArray) jsonResponse.get("devices");
+                                    if (devices.length() > 0) {
+                                        JSONObject deviceObject = devices.getJSONObject(0);
+                                        if (deviceObject.has("id")) {
+                                            String deviceId = deviceObject.getString("id");
+                                            sharedState.put(Constants.DEVICE_ID, deviceId);
+                                        }
+                                    }
+                                }
+                                if (jsonResponse.has("email")) {
+                                    String email = jsonResponse.getString("email");
+                                    sharedState.put(Constants.JOURNEY_EMAIL, email);
+                                }
+                                if (jsonResponse.has("enrollments")) {
+                                    enrollments = (JSONArray) jsonResponse.get("enrollments");
+
+                                    // this code block will ensure that the user enrollment/authentication policy set by the forgerock admin will be implemented
+                                    // as an example we are considering here that a forgerock admin set up the policy where admin users can only enroll/authenticate
+                                    // only via facial-biometrics/mobile app and any other user will be using mobile app method for enrollment/authentication
+
+                                    if (isAdmin) {
+                                        flag = methodCheck(adminUserPriorities, enrollments, sharedState, isAdmin);
+                                    } else {
+                                        flag = methodCheck(nonAdminUserPriorities, enrollments, sharedState, isAdmin);
+                                        if (!flag) {
+                                            logger.debug("No suitable enrollment method found for journey customer");
+                                            System.out.println("No suitable enrollment method found for journey customer");
+                                            sharedState.put(Constants.ERROR_MESSAGE, "No suitable enrollment method found for journey customer");
+                                            return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                                        }
+                                    }
+                                } else {//this code block will only execute if the customer doesn't have any enrollment
+                                    if (isAdmin) {
+                                        sharedState.put(Constants.METHOD_NAME, adminUserPriorities.get(0));
+                                    } else {
+                                        logger.debug("No enrollment method found for journey customer");
+                                        System.out.println("No enrollment method found for journey customer");
+                                        sharedState.put(Constants.ERROR_MESSAGE, "No enrollment method found for journey customer");
+                                        return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                                    }
+                                }
+                            } catch (Exception e) {
+                                logger.error(Arrays.toString(e.getStackTrace()));
+                                throw new NodeProcessException("Exception is: " + e);
                             }
                         }
+                        if ((sharedState.get(Constants.METHOD_NAME).asString() == Constants.FACIAL_BIOMETRIC)
+                                && (sharedState.get(Constants.JOURNEY_PHONE_NUMBER).isNull()
+                                && sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).isNull())) {
+                            sharedState.put(Constants.ERROR_MESSAGE, "User phone number is required to proceed");
+                            return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                        } else if ((sharedState.get(Constants.METHOD_NAME).asString() == Constants.MOBILE_APP)
+                                && sharedState.get(Constants.DEVICE_ID).isNull()) {
+                            sharedState.put(Constants.ERROR_MESSAGE, "Mobile device id is required to proceed");
+                            return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                        }
+
+
+                        if (flag) {
+                            logger.debug("connecting with has enrollments");
+                            sharedState.put(Constants.TYPE, "Authentication");
+                            return goTo(EnrollmentStatusCheckOutcome.Has_Enrollments).replaceSharedState(sharedState).build();
+                        } else {
+                            logger.debug("connecting with no enrollment");
+                            sharedState.put(Constants.TYPE, "Enrollment");
+                            return goTo(EnrollmentStatusCheckOutcome.No_Enrollments).replaceSharedState(sharedState).build();
+                        }
                     }
-
-                    //if any exception is thrown, it will be handled by this code block
-
-                    catch (Exception e) {
-                        logger.error(e.getStackTrace().toString());
-                        e.printStackTrace();
-                    }
                 }
-
-                //if the flag value is true, connect the customer with has enrollments
-
-                if (flag) {
-                    logger.debug("connecting with has enrollments");
-                    sharedState.put(Constants.TYPE, "Authentication");
-                    return goTo(EnrollmentStatusCheckOutcome.Has_Enrollments).replaceSharedState(sharedState).build();
-                }
-
-                //if the flag value is false, connect the customer with no enrollment
-
-                else {
-                    logger.debug("connecting with no enrollment");
-                    sharedState.put(Constants.TYPE, "Enrollment");
-                    return goTo(EnrollmentStatusCheckOutcome.No_Enrollments).replaceSharedState(sharedState).build();
-                }
+            } catch (Exception e) {
+                logger.error(Arrays.toString(e.getStackTrace()));
+                throw new NodeProcessException("Exception is: " + e);
             }
         }
-
-        } catch (Exception e) {
-            logger.error(e.getStackTrace().toString());
-            e.printStackTrace();
-            throw new NodeProcessException("Exception is: " + e);
-        }
-
-        return null;
-
+        logger.debug("An unexpected error occurred");
+        System.out.println("An unexpected error occurred");
+        sharedState.put(Constants.ERROR_MESSAGE, "An unexpected error occurred");
+        return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
     }
 
     //this method will decide whether the customer should be connected with has enrollments or no enrollment flow
-    public Boolean methodCheck(ArrayList<String> priorities, JSONArray enrollments, JsonValue sharedState) {
+    public Boolean methodCheck(ArrayList<String> priorities, JSONArray enrollments, JsonValue sharedState, Boolean isAdmin) {
 
         //iterating the priorities array received
 
@@ -274,7 +296,7 @@ public class EnrollmentStatusCheck implements Node {
             //set that method name to be used for enrollments/authentication
 
             if (enrollments.toString().contains(method)) {
-                logger.debug("choosen method name is " + method);
+                logger.debug("chosen method name is " + method);
                 sharedState.put(Constants.METHOD_NAME, method);
                 return true;
             }
@@ -283,9 +305,10 @@ public class EnrollmentStatusCheck implements Node {
         //if the nth method name of priorities array doesn't have an occurrence
         // in the enrollments array (fetched from customer look up call)
         //set first method name from the priorities array to be used for enrollments/authentication
-
-        logger.debug("choosen method name is " + priorities.get(0));
-        sharedState.put(Constants.METHOD_NAME, priorities.get(0));
+        if (isAdmin) {
+            logger.debug("choosen method name is " + priorities.get(0));
+            sharedState.put(Constants.METHOD_NAME, priorities.get(0));
+        }
         return false;
     }
 
@@ -304,20 +327,24 @@ public class EnrollmentStatusCheck implements Node {
         /**
          * selection for No_Enrollments.
          */
-        No_Enrollments
+        No_Enrollments,
+        /**
+         * selection for Message.
+         */
+        Message
 
     }
-
 
     //this code block will generate 2 node outcomes i.e. has enrollments and no enrollments
     public static class EnrollmentStatusOutcomeProvider implements org.forgerock.openam.auth.node.api.OutcomeProvider {
         @Override
         public List<Outcome> getOutcomes(PreferredLocales locales, JsonValue nodeAttributes) {
-            ResourceBundle bundle = locales.getBundleInPreferredLocale(EnrollmentStatusCheck.BUNDLE,
-                    EnrollmentStatusCheck.EnrollmentStatusOutcomeProvider.class.getClassLoader());
-            return ImmutableList.of(new Outcome(EnrollmentStatusCheckOutcome.Has_Enrollments.name(), bundle.getString("hasEnrollments")),
-                    new Outcome(EnrollmentStatusCheckOutcome.No_Enrollments.name(), bundle.getString("noEnrollments")));
+            ResourceBundle bundle = locales.getBundleInPreferredLocale(EnrollmentStatusCheck.BUNDLE, EnrollmentStatusCheck.EnrollmentStatusOutcomeProvider.class.getClassLoader());
+            return ImmutableList.of(new Outcome(EnrollmentStatusCheckOutcome.Has_Enrollments.name(), bundle.getString("hasEnrollments")), new Outcome(EnrollmentStatusCheckOutcome.No_Enrollments.name(), bundle.getString("noEnrollments")), new Outcome(EnrollmentStatusCheckOutcome.Message.name(), bundle.getString("message")));
         }
+    }
 
+    public String f1() {
+        return "document.getElementById('loginButton_0').style.display='none';\n" + "document.getElementById('loginButton_0').click()";
     }
 }

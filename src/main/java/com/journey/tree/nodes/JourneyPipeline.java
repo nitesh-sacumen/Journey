@@ -3,6 +3,9 @@ package com.journey.tree.nodes;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.assistedinject.Assisted;
 import com.journey.tree.config.Constants;
+import com.journey.tree.util.CreateExecution;
+import com.journey.tree.util.RetrieveExecution;
+import com.sun.identity.authentication.callbacks.ScriptTextOutputCallback;
 import com.sun.identity.authentication.client.AuthClientUtils;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.annotations.sm.Attribute;
@@ -13,12 +16,15 @@ import org.forgerock.openam.auth.node.api.TreeContext;
 import org.forgerock.util.i18n.PreferredLocales;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.journey.tree.util.CreateExecution;
-import com.journey.tree.util.RetrieveExecution;
 
 import javax.inject.Inject;
+import javax.security.auth.callback.Callback;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
+
+import static org.forgerock.openam.auth.node.api.Action.send;
 
 /**
  * @author Sacumen (www.sacumen.com)
@@ -30,7 +36,7 @@ public class JourneyPipeline implements Node {
 
     private final Config config;
     private static final String BUNDLE = "com/journey/tree/nodes/JourneyPipeline";
-    private final Logger logger = LoggerFactory.getLogger(AuthClientUtils.class);
+    private static final Logger logger = LoggerFactory.getLogger(JourneyPipeline.class);
 
     /**
      * Configuration for the node.
@@ -42,7 +48,7 @@ public class JourneyPipeline implements Node {
         @Attribute(order = 100, requiredValue = true)
         String pipelineKey();
 
-        @Attribute(order = 200, requiredValue = true)
+        @Attribute(order = 200)
         String dashboardId();
 
     }
@@ -60,20 +66,26 @@ public class JourneyPipeline implements Node {
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
 
-        //if either of pipeline key or dashboard id is empty, the flow will not continue
+        //if pipeline key is empty, then the flow will not continue
 
-        if (config.pipelineKey() == null || config.dashboardId() == null) {
-            logger.error("Please configure pipelineKey/dashboard Id to proceed");
-            System.out.println("Please configure pipelineKey/dashboard Id to proceed");
-            return null;
+        if (config.pipelineKey() == null) {
+            logger.error("please provide pipeline key to proceed");
+            throw new NodeProcessException("please provide pipeline key to proceed");
         }
         try {
             JsonValue sharedState = context.sharedState;
-
+            if (!context.hasCallbacks()) {
+                List<Callback> cbList = new ArrayList<>();
+                ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1(sharedState.get(Constants.TYPE).asString()));
+                cbList.add(scriptTextOutputCallback);
+                return send(ImmutableList.copyOf(cbList)).build();
+            }
             //putting pipeline key and dashboard id in the shared memory
 
             sharedState.put(Constants.PIPELINE_KEY, config.pipelineKey());
-            sharedState.put(Constants.DASHBOARD_ID, config.dashboardId());
+            if (config.dashboardId() != null) {
+                sharedState.put(Constants.DASHBOARD_ID, config.dashboardId());
+            }
             CreateExecution createExecution = new CreateExecution();
 
             //this statement will call execute method of CreateExecution class which will make call to create execution api
@@ -82,40 +94,59 @@ public class JourneyPipeline implements Node {
             String executionId = createExecution.execute(context);
             String type;
             type = sharedState.get(Constants.TYPE).asString();
-            RetrieveExecution retrieveExecution = new RetrieveExecution();
 
             //here call is made to retrieve method of RetrieveExecution class
             // which will make calls to execution retrieve
             // api to check if it has either of completedAt or failedAt in response else it will return timeout
 
-            String executionStatus = retrieveExecution.retrieve(context, executionId);
+            String executionStatus;
+            if (executionId != null) {
+                RetrieveExecution retrieveExecution = new RetrieveExecution();
+                executionStatus = retrieveExecution.retrieve(context, executionId);
 
-            //comparing execution status received which could be either of completed/failed/timeout
+                //comparing execution status received which could be either of completed/failed/timeout
 
-            if (executionStatus == Constants.EXECUTION_COMPLETED) {
-                logger.debug(type + " with id " + executionId + " successfully completed");
+                if (executionStatus == Constants.EXECUTION_COMPLETED) {
+                    logger.debug(type + " with id " + executionId + " successfully completed");
 
-                //if the execution status is completed, connect it with successful outcome
+                    //if the execution status is completed, connect it with successful outcome
 
-                return goTo(JourneyPipelineOutcome.Successful).replaceSharedState(sharedState).build();
-            } else if (executionStatus == Constants.EXECUTION_FAILED) {
-                logger.debug(type + " with id " + executionId + " failed");
+                    return goTo(JourneyPipelineOutcome.Successful).replaceSharedState(sharedState).build();
+                } else if (executionStatus == Constants.EXECUTION_FAILED) {
+                    logger.debug(type + " with id " + executionId + " failed");
+                    System.out.println(type + " with id " + executionId + " failed");
 
-                //if the execution status is failed, connect it with error outcome
+                    //if the execution status is failed, connect it with error outcome
 
-                return goTo(JourneyPipelineOutcome.Error).replaceSharedState(sharedState).build();
+                    return goTo(JourneyPipelineOutcome.Error).replaceSharedState(sharedState).build();
+                } else {
+                    logger.debug(type + " with id " + executionId + " has a timeout");
+                    System.out.println(type + " with id " + executionId + " has a timeout");
+
+                    //if either of completedAt or failedAt is not present then connect it with timeout outcome
+
+                    return goTo(JourneyPipelineOutcome.Timeout).replaceSharedState(sharedState).build();
+                }
             } else {
-                logger.debug(type + " with id " + executionId + " has a timeout");
-
-               //if either of completedAt or failedAt is not present then connect it with timeout outcome
+                logger.debug("execution id not created/timeout");
+                System.out.println("execution id not created/timeout");
 
                 return goTo(JourneyPipelineOutcome.Timeout).replaceSharedState(sharedState).build();
             }
         } catch (Exception e) {
-            logger.error(e.getStackTrace().toString());
-            e.printStackTrace();
+            logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: ", e);
         }
+    }
+
+    String f1(String type) {
+        return "document.getElementById('loginButton_0').style.display = 'none';\r\n" +
+                "var header = document.createElement('h3');\r\n" +
+                "header.id='waitHeader';\r\n" +
+                "header.style.textAlign='center';\r\n" +
+                "header.innerHTML ='" + type + " initiated, please wait.';\r\n" +
+                "document.body.appendChild(header);\r\n" +
+                "document.getElementById('loginButton_0').click();\r\n";
     }
 
     private Action.ActionBuilder goTo(JourneyPipeline.JourneyPipelineOutcome outcome) {

@@ -2,6 +2,7 @@ package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
 import org.apache.http.HttpEntity;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -13,10 +14,15 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Arrays;
+
 public class RetrieveExecution {
-    private Logger logger = LoggerFactory.getLogger(RetrieveExecution.class);
+    private static final Logger logger = LoggerFactory.getLogger(RetrieveExecution.class);
     String apiAccessToken = "";
-    String result = "";
+    String result = null;
     CloseableHttpResponse response;
     JSONObject jsonResponse;
     Boolean isCompleted = false;
@@ -33,7 +39,6 @@ public class RetrieveExecution {
             if (sharedState.get(Constants.API_ACCESS_TOKEN).isNotNull()) {
                 apiAccessToken = sharedState.get(Constants.API_ACCESS_TOKEN).asString();
             }
-            System.out.println("execution id is " + executionId);
 
             //appending execution id as a query parameter for retrieve api endpoint
 
@@ -43,58 +48,66 @@ public class RetrieveExecution {
 
             httpGet.addHeader("Authorization", "Bearer " + apiAccessToken);
             httpGet.addHeader("Accept", "application/json");
-            System.out.println("before 3 seconds");
 
             //this statement will delay the first call to retrieve execution api for a span of 3 seconds
 
             Thread.sleep(3000);
-            System.out.println("after 3 seconds");
 
+            Integer retrieveTimeout=sharedState.get(Constants.RETRIEVE_TIMEOUT).asInteger();
+            Integer retrieveDelay=sharedState.get(Constants.RETRIEVE_DELAY).asInteger();
 
             //in this loop retrieve api will be called at max for
-            // 60 times at the interval of 2 seconds
+            // retrieveTimeout value times at the interval of retrieveDelay seconds
 
-            for (Integer j = 1; j <= 60; j++) {
+            for (Integer j = 1; j <= retrieveTimeout; j++) {
                 CloseableHttpResponse response = httpclient.execute(httpGet);
                 responseCode = response.getStatusLine().getStatusCode();
-                logger.debug("retieve api response code is: " + responseCode);
-                if (response != null) {
-                    HttpEntity entityResponse = response.getEntity();
-                    if (entityResponse != null) {
-                        result = EntityUtils.toString(entityResponse);
-                    }
-                    if (result != "") {
-                        JSONObject jsonResponse = new JSONObject(result);
+                logger.debug("retrieve api response code is: " + responseCode);
+                HttpEntity entityResponse = response.getEntity();
+                if (entityResponse != null) {
+                    result = EntityUtils.toString(entityResponse);
+                }
+                if (result != null) {
+                    JSONObject jsonResponse = new JSONObject(result);
 
-                        //this code block will execute if either of completedAt or failedAt is present in the retrieve
-                        //execution api response
+                    //this code block will execute if either of completedAt or failedAt is present in the retrieve
+                    //execution api response
 
-                        if (jsonResponse != null && (jsonResponse.has("completedAt") || jsonResponse.has("failedAt"))) {
+                    if (jsonResponse.has("completedAt") || jsonResponse.has("failedAt")) {
 
-                            //if completedAt is present, then set isCompleted to true
-
-                            if (jsonResponse.has("completedAt")) {//apply logic for handling garbage value
+                        //if completedAt is present, then set isCompleted to true
+                        Boolean flag;
+                        String date;
+                        if (jsonResponse.has("completedAt")) {
+                            date = jsonResponse.getString("completedAt");
+                            flag = checkDate(date);
+                            if (flag) {
                                 isCompleted = true;
+                                break;
                             }
 
-                            //if failedAt is present, then set isFailed to true
+                        }
 
-                            else if (jsonResponse.has("failedAt")) {
+                        //if failedAt is present, then set isFailed to true
+
+                        else if (jsonResponse.has("failedAt")) {
+                            date = jsonResponse.getString("failedAt");
+                            flag = checkDate(date);
+                            if (flag) {
                                 isFailed = true;
+                                break;
                             }
-                            break;
+
                         }
                     }
                 }
 
-                System.out.println(j + " api call");
 
-                //making 2 seconds delay before making next retrieve execution api call
-
-                Thread.sleep(2000);
+                //making retrieveDelay seconds delay before making next retrieve execution api call
+                Thread.sleep(retrieveDelay);
             }
         } catch (Exception e) {
-            logger.error(e.getStackTrace().toString());
+            logger.error(Arrays.toString(e.getStackTrace()));
             e.printStackTrace();
         }
 
@@ -106,7 +119,7 @@ public class RetrieveExecution {
             return Constants.EXECUTION_FAILED;
         }
 
-        //this block will execute if in the span of 120 seconds
+        //this block will execute if in the span of 180 seconds
         // retrieve execution api doesn't have either of completedAt or failedAt, then timeout will be returned
 
         else {
@@ -114,15 +127,26 @@ public class RetrieveExecution {
         }
     }
 
+    private Boolean checkDate(String date) {
+        try {
+            Instant.from(DateTimeFormatter.ISO_INSTANT.parse(date));
+            return true;
+        } catch (DateTimeParseException e) {
+            logger.error(Arrays.toString(e.getStackTrace()));
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     public CloseableHttpClient getHttpClient() {
         return buildDefaultClient();
     }
 
     public CloseableHttpClient buildDefaultClient() {
-        logger.debug("requesting http client connection client open");
-
+        Integer timeout = Constants.REQUEST_TIMEOUT;
+        RequestConfig config = RequestConfig.custom().setConnectTimeout(timeout * 1000).setConnectionRequestTimeout(timeout * 1000).setSocketTimeout(timeout * 1000).build();
         HttpClientBuilder clientBuilder = HttpClientBuilder.create();
-        return clientBuilder.build();
+        return clientBuilder.setDefaultRequestConfig(config).build();
     }
 
     public HttpGet createGetRequest(String url) {

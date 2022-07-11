@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -26,7 +27,7 @@ public class MethodCheck implements Node {
 
     private final Config config;
     private static final String BUNDLE = "com/journey/tree/nodes/MethodCheck";
-    private Logger logger = LoggerFactory.getLogger(AuthClientUtils.class);
+    private final static Logger logger = LoggerFactory.getLogger(MethodCheck.class);
 
     /**
      * Configuration for the node.
@@ -50,6 +51,7 @@ public class MethodCheck implements Node {
      */
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
+        logger.debug("*********************MethodCheck node********************");
         JsonValue sharedState = context.sharedState;
         try {
 
@@ -84,8 +86,7 @@ public class MethodCheck implements Node {
 
             }
         } catch (Exception e) {
-            logger.error(e.getStackTrace().toString());
-            e.printStackTrace();
+            logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: ", e);
         }
 
