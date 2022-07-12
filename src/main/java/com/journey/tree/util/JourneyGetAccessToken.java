@@ -1,3 +1,9 @@
+/**
+ * @author Sacumen(www.sacumen.com)
+ * This class will create a journey access token that will be used
+ * to call other journey apis
+ */
+
 package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
@@ -21,8 +27,8 @@ import java.util.Arrays;
 public class JourneyGetAccessToken {
     private final static Logger logger = LoggerFactory.getLogger(JourneyGetAccessToken.class);
 
-    public JSONObject getAccessToken(TreeContext context,Integer timeToLive) throws NodeProcessException {
-        JSONObject jsonResponse = null;
+    public JSONObject createAccessToken(TreeContext context,Integer timeToLive) throws NodeProcessException {
+        JSONObject jsonResponse;
         try (CloseableHttpClient httpclient = getHttpClient()) {
             JsonValue sharedState = context.sharedState;
             String refreshToken = sharedState.get(Constants.REFRESH_TOKEN).asString();

@@ -1,3 +1,9 @@
+/**
+ * @author Sacumen(www.sacumen.com) JourneyFailureNode node with
+ * single outcome. This node will display authentication/enrollment failure message to
+ * the user
+ */
+
 package com.journey.tree.nodes;
 
 import com.google.common.collect.ImmutableList;
@@ -17,13 +23,8 @@ import java.util.List;
 
 import static org.forgerock.openam.auth.node.api.Action.send;
 
-/**
- * @author Saucmen(www.sacumen.com) Verification Success node with
- * single outcome. This node will render Success message to user.
- */
 @Node.Metadata(outcomeProvider = SingleOutcomeNode.OutcomeProvider.class, configClass = JourneyFailureNode.Config.class)
 public class JourneyFailureNode extends SingleOutcomeNode {
-
     private final static Logger logger = LoggerFactory.getLogger(JourneyFailureNode.class);
 
     /**
@@ -35,6 +36,11 @@ public class JourneyFailureNode extends SingleOutcomeNode {
 
     List<Callback> cbList = new ArrayList<>();
 
+    /**
+     * Show authentication/enrollment failure message to the user
+     *
+     * @return Action, Which will redirect to next action.
+     */
     private Action collectRegField(TreeContext context) {
         JsonValue sharedState = context.sharedState;
         String type = sharedState.get(Constants.TYPE).asString();
@@ -45,9 +51,13 @@ public class JourneyFailureNode extends SingleOutcomeNode {
         return send(ImmutableList.copyOf(cbList)).build();
     }
 
+    /**
+     * @param context
+     * @return Action, Which will redirect to next action.
+     */
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
-        logger.debug("*********************Failure node********************");
+        logger.debug("*********************JourneyFailureNode node********************");
         if (!context.hasCallbacks()) {
             List<Callback> cbList = new ArrayList<>();
             HiddenValueCallback hiddenValueCallback = new HiddenValueCallback("h1");
@@ -62,13 +72,20 @@ public class JourneyFailureNode extends SingleOutcomeNode {
         }
     }
 
+    /**
+     * This function will create return a javascript based script .
+     */
     String f1() {
         return "if (document.contains(document.getElementById('waitHeader'))) {\n" +
                 "document.getElementById('waitHeader').remove();\n" +
-                "document.getElementById('loginButton_0').click();\n" +
-                "}\n";
+                "}\n" +
+                "document.getElementById('loginButton_0').click();\n";
     }
 
+    /**
+     * @param msg Message that needs to be rendered to the user.
+     * @return Text output callback
+     */
     private TextOutputCallback getTextOutputCallbackObject(String msg) {
         return new TextOutputCallback(0, msg);
     }

@@ -1,7 +1,12 @@
+/**
+ * @author Sacumen(www.sacumen.com)
+ * This class will fetch forgerock email id and phone number
+ * of the provided username
+ */
+
 package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
-import com.sun.identity.authentication.client.AuthClientUtils;
 import com.sun.identity.idm.AMIdentity;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.auth.node.api.NodeProcessException;

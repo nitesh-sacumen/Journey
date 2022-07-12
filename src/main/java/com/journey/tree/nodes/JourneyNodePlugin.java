@@ -25,7 +25,6 @@ import java.util.Map;
 
 import static java.util.Arrays.asList;
 
-
 /**
  * Definition of an <a href="https://backstage.forgerock.com/docs/am/6/apidocs/org/forgerock/openam/auth/node/api/AbstractNodeAmPlugin.html">AbstractNodeAmPlugin</a>.
  * Implementations can use {@code @Inject} setters to get access to APIs

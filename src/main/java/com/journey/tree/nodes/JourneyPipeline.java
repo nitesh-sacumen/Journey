@@ -1,3 +1,10 @@
+/**
+ * @author Sacumen(www.sacumen.com) JourneyPipeline node with
+ * three outcomes. This node will create an execution for enrollment/authentication,
+ * then will retrieve its result whether success/failure/timeout
+ * node outcomes will be Successful, Error/failure, Timeout
+ */
+
 package com.journey.tree.nodes;
 
 import com.google.common.collect.ImmutableList;
@@ -25,12 +32,6 @@ import java.util.List;
 import java.util.ResourceBundle;
 
 import static org.forgerock.openam.auth.node.api.Action.send;
-
-/**
- * @author Sacumen (www.sacumen.com)
- * @category Node
- * @Descrition
- */
 @Node.Metadata(outcomeProvider = JourneyPipeline.JourneyPipelineOutcomeProvider.class, configClass = JourneyPipeline.Config.class)
 public class JourneyPipeline implements Node {
 
@@ -41,8 +42,6 @@ public class JourneyPipeline implements Node {
     /**
      * Configuration for the node.
      */
-
-    //this block will for setting configuration variables
 
     public interface Config {
         @Attribute(order = 100, requiredValue = true)
@@ -62,6 +61,11 @@ public class JourneyPipeline implements Node {
     public JourneyPipeline(@Assisted JourneyPipeline.Config config) {
         this.config = config;
     }
+
+    /**
+     * @param context
+     * @return Action, Which will redirect to next action.
+     */
 
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
@@ -139,6 +143,9 @@ public class JourneyPipeline implements Node {
         }
     }
 
+    /**
+     * This function will create return a javascript based script .
+     */
     String f1(String type) {
         return "document.getElementById('loginButton_0').style.display = 'none';\r\n" +
                 "var header = document.createElement('h3');\r\n" +
@@ -173,12 +180,15 @@ public class JourneyPipeline implements Node {
     }
 
     /**
-     * Defines the possible outcomes from this JourneyPipeline node.
+     * This class will create customized outcome for the node.
      */
-
-    //this code block will generate 3 outcomes of the journey pipeline node i.e. successful, error, timeout
-
     public static class JourneyPipelineOutcomeProvider implements org.forgerock.openam.auth.node.api.OutcomeProvider {
+
+        /**
+         * @param locales        Local property file for configuration.
+         * @param nodeAttributes Node attributes for outcomes
+         * @return List of possible outcomes.
+         */
         @Override
         public List<Outcome> getOutcomes(PreferredLocales locales, JsonValue nodeAttributes) {
             ResourceBundle bundle = locales.getBundleInPreferredLocale(JourneyPipeline.BUNDLE, JourneyPipeline.JourneyPipelineOutcomeProvider.class.getClassLoader());

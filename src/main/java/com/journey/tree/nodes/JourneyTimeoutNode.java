@@ -1,3 +1,9 @@
+/**
+ * @author Sacumen(www.sacumen.com) JourneyTimeoutNode node with
+ * single outcome. This node will display enrollment/authentication timeout
+ * message to the user
+ */
+
 package com.journey.tree.nodes;
 
 import com.google.common.collect.ImmutableList;
@@ -17,10 +23,6 @@ import java.util.List;
 
 import static org.forgerock.openam.auth.node.api.Action.send;
 
-/**
- * @author Saucmen(www.sacumen.com) Verification Success node with
- * single outcome. This node will render Success message to user.
- */
 @Node.Metadata(outcomeProvider = SingleOutcomeNode.OutcomeProvider.class, configClass = JourneyTimeoutNode.Config.class)
 public class JourneyTimeoutNode extends SingleOutcomeNode {
 
@@ -35,6 +37,11 @@ public class JourneyTimeoutNode extends SingleOutcomeNode {
 
     List<Callback> cbList = new ArrayList<>();
 
+    /**
+     * Displays enrollment/authentication success message to the user.
+     * @param context
+     * @return Action, Which will redirect to next action.
+     */
     private Action collectRegField(TreeContext context) {
         JsonValue sharedState = context.sharedState;
         String type = sharedState.get(Constants.TYPE).asString();
@@ -46,6 +53,10 @@ public class JourneyTimeoutNode extends SingleOutcomeNode {
         return send(ImmutableList.copyOf(cbList)).build();
     }
 
+    /**
+     * @param context
+     * @return Action, Which will redirect to next action.
+     */
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
         logger.debug("*********************Timeout node********************");
@@ -63,13 +74,20 @@ public class JourneyTimeoutNode extends SingleOutcomeNode {
         }
     }
 
+    /**
+     * This function will create return a javascript based script .
+     */
     String f1() {
         return "if (document.contains(document.getElementById('waitHeader'))) {\n" +
                 "document.getElementById('waitHeader').remove();\n" +
-                "document.getElementById('loginButton_0').click();\n" +
-                "}\n";
+                "}\n"+
+                "document.getElementById('loginButton_0').click();\n";
     }
 
+    /**
+     * @param msg Message that needs to be rendered to the user.
+     * @return Text output callback
+     */
     private TextOutputCallback getTextOutputCallbackObject(String msg) {
         return new TextOutputCallback(0, msg);
     }

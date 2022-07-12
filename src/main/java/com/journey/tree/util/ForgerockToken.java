@@ -1,7 +1,12 @@
+/**
+ * @author Sacumen(www.sacumen.com)
+ * This class will create a forgerock token that will be used to call other
+ * forgerock apis
+ */
+
 package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
-import com.sun.identity.authentication.client.AuthClientUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -21,9 +26,11 @@ import java.util.Arrays;
 public class ForgerockToken {
     private static final Logger logger = LoggerFactory.getLogger(ForgerockToken.class);
 
-    public void getToken(String adminUsername, String adminPassword, TreeContext context) throws NodeProcessException {
+    public void createToken(String adminUsername, String adminPassword, TreeContext context) throws NodeProcessException {
+        JsonValue sharedState = context.sharedState;
+        String hostUrl = sharedState.get(Constants.HOST_URL).asString();
         try (CloseableHttpClient httpClient = getHttpClient()) {
-            HttpPost httpPost1 = createPostRequest(Constants.FORGEROCK_GET_TOKEN_URL);
+            HttpPost httpPost1 = createPostRequest(hostUrl + Constants.FORGEROCK_GET_TOKEN_URL);
             httpPost1.addHeader("Accept", "application/json");
             httpPost1.addHeader("Content-Type", "application/json");
             httpPost1.addHeader("X-OpenAM-Username", adminUsername);
@@ -36,7 +43,6 @@ public class ForgerockToken {
                 if (jsonResponse.has("tokenId")) {
                     String tokenId = jsonResponse.getString("tokenId");
                     logger.debug("forgerock token created");
-                    JsonValue sharedState = context.sharedState;
                     sharedState.put(Constants.TOKEN_ID, tokenId);
                 }
             }

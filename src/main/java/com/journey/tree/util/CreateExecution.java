@@ -1,3 +1,9 @@
+/**
+ * @author Sacumen(www.sacumen.com)
+ * This class will create an execution for enrollment/authentication
+ * and will return execution id
+ */
+
 package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;

@@ -1,7 +1,12 @@
+/**
+ * @author Sacumen(www.sacumen.com)
+ * This class will call various forgerock apis to fetch cookiename, session id,
+ * provided admin group details
+ */
+
 package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
-import com.sun.identity.authentication.client.AuthClientUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -28,8 +33,9 @@ public class UserDetails {
         JSONObject propertiesObject;
         JSONArray adminMemberList;
         JsonValue sharedState = context.sharedState;
+        String hostUrl = sharedState.get(Constants.HOST_URL).asString();
         try (CloseableHttpClient httpClient = getHttpClient()) {
-            HttpGet httpGet = createGetRequest(Constants.FORGEROCK_GET_SERVER_INFO_URL);
+            HttpGet httpGet = createGetRequest(hostUrl + Constants.FORGEROCK_GET_SERVER_INFO_URL);
             httpGet.addHeader("Accept", "application/json");
             httpGet.addHeader("Content-Type", "application/json");
             httpGet.addHeader("Accept-API-Version", "protocol=1.0,resource=1.1");
@@ -44,14 +50,13 @@ public class UserDetails {
                     sharedState.put(Constants.COOKIE_NAME, cookieName);
                 }
             }
-
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: " + e);
         }
         if (cookieName != null) {
             try (CloseableHttpClient httpClient = getHttpClient()) {
-                HttpPost httpPost1 = createPostRequest(Constants.FORGEROCK_GET_SESSION_INFO_URL);
+                HttpPost httpPost1 = createPostRequest(hostUrl + Constants.FORGEROCK_GET_SESSION_INFO_URL);
                 httpPost1.addHeader("Accept", "application/json");
                 httpPost1.addHeader("Content-Type", "application/json");
                 httpPost1.addHeader("Cookie", cookieName + "=" + tokenId);
@@ -74,13 +79,12 @@ public class UserDetails {
                         }
                     }
                 }
-
             } catch (Exception e) {
                 logger.error(Arrays.toString(e.getStackTrace()));
                 throw new NodeProcessException("Exception is: " + e);
             }
             try (CloseableHttpClient httpClient = getHttpClient()) {
-                HttpGet httpGet = createGetRequest(Constants.FORGEROCK_GET_GROUP_MEMBERS_URL + groupName);
+                HttpGet httpGet = createGetRequest(hostUrl + Constants.FORGEROCK_GET_GROUP_MEMBERS_URL + groupName);
                 httpGet.addHeader("Accept", "application/json");
                 httpGet.addHeader("Content-Type", "application/json");
                 httpGet.addHeader("Cookie", cookieName + "=" + tokenId);

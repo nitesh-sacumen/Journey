@@ -1,9 +1,14 @@
+/**
+ * @author Sacumen(www.sacumen.com) MethodCheck node with
+ * 3 outcomes. This node will connect with one of the 3 methods i.e.
+ * facial-biometrics, mobile app and one-time-password
+ */
+
 package com.journey.tree.nodes;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.assistedinject.Assisted;
 import com.journey.tree.config.Constants;
-import com.sun.identity.authentication.client.AuthClientUtils;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.auth.node.api.*;
 import org.forgerock.openam.auth.node.api.Action.ActionBuilder;
@@ -16,11 +21,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 
-/**
- * @author Sacumen (www.sacumen.com)
- * @category Node
- * @Descrition
- */
 @Node.Metadata(outcomeProvider = MethodCheck.MethodCheckOutcomeProvider.class, configClass =
         MethodCheck.Config.class)
 public class MethodCheck implements Node {
@@ -47,7 +47,8 @@ public class MethodCheck implements Node {
     }
 
     /**
-     * Main logic of the node.
+     * @param context
+     * @return Action, Which will redirect to next action.
      */
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
@@ -83,15 +84,13 @@ public class MethodCheck implements Node {
                 else if (methodName == Constants.MOBILE_APP) {
                     return goTo(MethodCheckOutcome.Mobile_App).replaceSharedState(sharedState).build();
                 }
-
             }
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: ", e);
         }
-
-
-        return null;
+        logger.debug("Unexpected error occurred, please contact administrator");
+        throw new NodeProcessException("Unexpected error occurred, please contact administrator");
     }
 
 
@@ -119,13 +118,15 @@ public class MethodCheck implements Node {
     }
 
     /**
-     * Defines the possible outcomes from this EnrollmentMethodCheck node.
+     * This class will create customized outcome for the node.
      */
-
-
-    //this code will generate 3 outcomes for MethodCheck node
-    // i.e. facial-biometrics, one-time-password (for testing only), mobile app
     public static class MethodCheckOutcomeProvider implements OutcomeProvider {
+
+        /**
+         * @param locales        Local property file for configuration.
+         * @param nodeAttributes Node attributes for outcomes
+         * @return List of possible outcomes.
+         */
         @Override
         public List<Outcome> getOutcomes(PreferredLocales locales, JsonValue nodeAttributes) {
             ResourceBundle bundle = locales.getBundleInPreferredLocale(MethodCheck.BUNDLE,

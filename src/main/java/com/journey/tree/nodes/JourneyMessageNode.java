@@ -1,3 +1,9 @@
+/**
+ * @author Sacumen(www.sacumen.com) JourneyMessageNode node with
+ * single outcome. This node will display error message
+ * that is not allowing authentication/enrollment process to initiate
+ */
+
 package com.journey.tree.nodes;
 
 import com.google.common.collect.ImmutableList;
@@ -16,12 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.forgerock.openam.auth.node.api.Action.send;
-
-/**
- * @author Sacumen (www.sacumen.com)
- * @category Node
- * @Descrition
- */
 @Node.Metadata(outcomeProvider = SingleOutcomeNode.OutcomeProvider.class, configClass =
         JourneyMessageNode.Config.class)
 public class JourneyMessageNode extends SingleOutcomeNode {
@@ -47,7 +47,8 @@ public class JourneyMessageNode extends SingleOutcomeNode {
     }
 
     /**
-     * Main logic of the node.
+     * @param context
+     * @return Action, Which will redirect to next action.
      */
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
@@ -62,8 +63,6 @@ public class JourneyMessageNode extends SingleOutcomeNode {
                 cbList.add(getTextOutputCallbackObject(errorMessage));
                 cbList.add(getTextOutputCallbackObject("Please contact administrator"));
             }
-
-
             String[] submitButton = {"Call Support"};
             cbList.add(new ConfirmationCallback(0, submitButton, 0));
             return send(ImmutableList.copyOf(cbList)).build();
@@ -72,6 +71,10 @@ public class JourneyMessageNode extends SingleOutcomeNode {
         throw new NodeProcessException("Unexpected error occurred, please contact administrator");
     }
 
+    /**
+     * @param msg Message that needs to be rendered to the user.
+     * @return Text output callback
+     */
     private TextOutputCallback getTextOutputCallbackObject(String msg) {
         return new TextOutputCallback(0, msg);
     }

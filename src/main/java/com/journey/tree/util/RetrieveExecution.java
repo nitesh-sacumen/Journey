@@ -1,3 +1,9 @@
+/**
+ * @author Sacumen(www.sacumen.com)
+ * This class will check for an enrollment/authentication status which could be
+ * either of completed/failed/timeout
+ */
+
 package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
@@ -21,10 +27,8 @@ import java.util.Arrays;
 
 public class RetrieveExecution {
     private static final Logger logger = LoggerFactory.getLogger(RetrieveExecution.class);
-    String apiAccessToken = "";
+    String apiAccessToken = null;
     String result = null;
-    CloseableHttpResponse response;
-    JSONObject jsonResponse;
     Boolean isCompleted = false;
     Boolean isFailed = false;
     Integer responseCode;
@@ -85,23 +89,20 @@ public class RetrieveExecution {
                                 isCompleted = true;
                                 break;
                             }
-
                         }
 
                         //if failedAt is present, then set isFailed to true
-
-                        else if (jsonResponse.has("failedAt")) {
+                        //avoided else if below as if completedAt will have garbage value, then failed at will never be checked
+                        if (jsonResponse.has("failedAt")) {
                             date = jsonResponse.getString("failedAt");
                             flag = checkDate(date);
                             if (flag) {
                                 isFailed = true;
                                 break;
                             }
-
                         }
                     }
                 }
-
 
                 //making retrieveDelay seconds delay before making next retrieve execution api call
                 Thread.sleep(retrieveDelay);
