@@ -118,14 +118,12 @@ public class JourneyPipeline implements Node {
                     return goTo(JourneyPipelineOutcome.Successful).replaceSharedState(sharedState).build();
                 } else if (executionStatus == Constants.EXECUTION_FAILED) {
                     logger.debug(type + " with id " + executionId + " failed");
-                    System.out.println(type + " with id " + executionId + " failed");
 
                     //if the execution status is failed, connect it with error outcome
 
                     return goTo(JourneyPipelineOutcome.Error).replaceSharedState(sharedState).build();
                 } else {
                     logger.debug(type + " with id " + executionId + " has a timeout");
-                    System.out.println(type + " with id " + executionId + " has a timeout");
 
                     //if either of completedAt or failedAt is not present then connect it with timeout outcome
 
@@ -133,7 +131,6 @@ public class JourneyPipeline implements Node {
                 }
             } else {
                 logger.debug("execution id not created/timeout");
-                System.out.println("execution id not created/timeout");
 
                 return goTo(JourneyPipelineOutcome.Timeout).replaceSharedState(sharedState).build();
             }
