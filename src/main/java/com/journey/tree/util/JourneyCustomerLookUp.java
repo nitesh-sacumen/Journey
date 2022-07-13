@@ -7,11 +7,9 @@ package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
 import org.apache.http.HttpEntity;
-import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.auth.node.api.NodeProcessException;
@@ -29,21 +27,37 @@ public class JourneyCustomerLookUp {
     public JSONArray customerLookUp(TreeContext context) throws NodeProcessException {
         JSONObject jsonResponse;
         JSONArray enrollments = null;
-        try (CloseableHttpClient httpclient = getHttpClient()) {
-            JsonValue sharedState = context.sharedState;
+        Integer responseCode;
+        JsonValue sharedState = context.sharedState;
+        HttpConnectionClient connection = new HttpConnectionClient();
+        try (CloseableHttpClient httpclient = connection.getHttpClient(context)) {
             String uniqueId = sharedState.get(Constants.UNIQUE_ID).asString();
             String accountId = sharedState.get(Constants.ACCOUNT_ID).asString();
             String token = sharedState.get(Constants.API_ACCESS_TOKEN).asString();
-            HttpGet httpGet = createGetRequest(Constants.ENROLLMENTS_CHECK_URL + "?unique_id=" + uniqueId + "&account_id=" + accountId);
+            HttpGet httpGet = connection.createGetRequest(Constants.ENROLLMENTS_CHECK_URL + "?unique_id=" + uniqueId + "&account_id=" + accountId);
             httpGet.addHeader("Authorization", "Bearer " + token);
             httpGet.addHeader("Accept", "application/json");
             CloseableHttpResponse response = httpclient.execute(httpGet);
-            Integer responseCode = response.getStatusLine().getStatusCode();
+            responseCode = response.getStatusLine().getStatusCode();
             sharedState.put(Constants.CUSTOMER_LOOKUP_RESPONSE_CODE, responseCode);
-            logger.debug("customer look up api call response code is::" + responseCode);
+            logger.debug("journey customer look up api call response code is::" + responseCode);
             HttpEntity entityResponse = response.getEntity();
             String result = EntityUtils.toString(entityResponse);
             jsonResponse = new JSONObject(result);
+            enrollments = populateJourneyCustomerDetails(context, jsonResponse);
+
+        } catch (Exception e) {
+            logger.error(Arrays.toString(e.getStackTrace()));
+            throw new NodeProcessException("Exception is: " + e);
+        }
+
+        return enrollments;
+    }
+
+    private JSONArray populateJourneyCustomerDetails(TreeContext context, JSONObject jsonResponse) {
+        JsonValue sharedState = context.sharedState;
+        JSONArray enrollments = null;
+        try {
             if (jsonResponse.has("id")) {
                 String customerJourneyId = (String) jsonResponse.get("id");
                 sharedState.put(Constants.CUSTOMER_JOURNEY_ID, customerJourneyId);
@@ -74,24 +88,7 @@ public class JourneyCustomerLookUp {
             }
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
-            throw new NodeProcessException("Exception is: " + e);
         }
-
         return enrollments;
-    }
-
-    public CloseableHttpClient getHttpClient() {
-        return buildDefaultClient();
-    }
-
-    public HttpGet createGetRequest(String url) {
-        return new HttpGet(url);
-    }
-
-    public CloseableHttpClient buildDefaultClient() {
-        Integer timeout = Constants.REQUEST_TIMEOUT;
-        RequestConfig config = RequestConfig.custom().setConnectTimeout(timeout * 1000).setConnectionRequestTimeout(timeout * 1000).setSocketTimeout(timeout * 1000).build();
-        HttpClientBuilder clientBuilder = HttpClientBuilder.create();
-        return clientBuilder.setDefaultRequestConfig(config).build();
     }
 }

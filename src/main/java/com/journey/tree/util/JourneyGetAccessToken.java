@@ -8,12 +8,10 @@ package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
 import org.apache.http.HttpEntity;
-import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.auth.node.api.NodeProcessException;
@@ -27,12 +25,14 @@ import java.util.Arrays;
 public class JourneyGetAccessToken {
     private final static Logger logger = LoggerFactory.getLogger(JourneyGetAccessToken.class);
 
-    public JSONObject createAccessToken(TreeContext context,Integer timeToLive) throws NodeProcessException {
+    public JSONObject createAccessToken(TreeContext context, Integer timeToLive) throws NodeProcessException {
         JSONObject jsonResponse;
-        try (CloseableHttpClient httpclient = getHttpClient()) {
+        Integer responseCode;
+        HttpConnectionClient connection = new HttpConnectionClient();
+        try (CloseableHttpClient httpclient = connection.getHttpClient(context)) {
             JsonValue sharedState = context.sharedState;
             String refreshToken = sharedState.get(Constants.REFRESH_TOKEN).asString();
-            HttpPost httpPost = createPostRequest(Constants.API_TOKEN_URL);
+            HttpPost httpPost = connection.createPostRequest(Constants.API_TOKEN_URL);
             JSONObject jsonObj = new JSONObject();
             jsonObj.put("ttl", timeToLive);
             httpPost.addHeader("Accept", "application/json");
@@ -41,7 +41,7 @@ public class JourneyGetAccessToken {
             StringEntity stringEntity = new StringEntity(jsonObj.toString());
             httpPost.setEntity(stringEntity);
             CloseableHttpResponse response = httpclient.execute(httpPost);
-            Integer responseCode = response.getStatusLine().getStatusCode();
+            responseCode = response.getStatusLine().getStatusCode();
             logger.debug("journey access token api call response code is:: " + responseCode);
             HttpEntity entityResponse = response.getEntity();
             String result = EntityUtils.toString(entityResponse);
@@ -51,20 +51,5 @@ public class JourneyGetAccessToken {
             throw new NodeProcessException("Exception is: " + e);
         }
         return jsonResponse;
-    }
-
-    public CloseableHttpClient getHttpClient() {
-        return buildDefaultClient();
-    }
-
-    public HttpPost createPostRequest(String url) {
-        return new HttpPost(url);
-    }
-
-    public CloseableHttpClient buildDefaultClient() {
-        Integer timeout = Constants.REQUEST_TIMEOUT;
-        RequestConfig config = RequestConfig.custom().setConnectTimeout(timeout * 1000).setConnectionRequestTimeout(timeout * 1000).setSocketTimeout(timeout * 1000).build();
-        HttpClientBuilder clientBuilder = HttpClientBuilder.create();
-        return clientBuilder.setDefaultRequestConfig(config).build();
     }
 }

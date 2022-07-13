@@ -23,11 +23,11 @@ import java.util.List;
 
 import static org.forgerock.openam.auth.node.api.Action.send;
 @Node.Metadata(outcomeProvider = SingleOutcomeNode.OutcomeProvider.class, configClass =
-        JourneyMessageNode.Config.class)
-public class JourneyMessageNode extends SingleOutcomeNode {
+        ErrorMessageNode.Config.class)
+public class ErrorMessageNode extends SingleOutcomeNode {
 
     private final Config config;
-    private final static Logger logger = LoggerFactory.getLogger(JourneyMessageNode.class);
+    private final static Logger logger = LoggerFactory.getLogger(ErrorMessageNode.class);
 
     /**
      * Configuration for the node.
@@ -42,7 +42,7 @@ public class JourneyMessageNode extends SingleOutcomeNode {
      * @param config The service config.
      */
     @Inject
-    public JourneyMessageNode(@Assisted Config config) {
+    public ErrorMessageNode(@Assisted Config config) {
         this.config = config;
     }
 

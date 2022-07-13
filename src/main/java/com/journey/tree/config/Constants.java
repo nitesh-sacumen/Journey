@@ -48,9 +48,10 @@ public final class Constants {
     public static final String UNIQUE_IDENTIFIER_FORGEROCK_ID = "forgerock_id";
     public static final String UNIQUE_ID = "unique_id";
     public static final String COUNTER = "counter";
-    public static final int REQUEST_TIMEOUT = 30;
+    public static final String REQUEST_TIMEOUT = "request_timeout";
     public static final String ERROR_MESSAGE = "error_message";
     public static final String RETRIEVE_TIMEOUT = "retrieve_timeout";
     public static final String RETRIEVE_DELAY = "retrieve_delay";
-    public static final String HOST_URL = "host_url";
+    public static final String FORGEROCK_HOST_URL = "forgerock_host_url";
+    public static final String EXECUTION_STATUS = "execution_status";
 }

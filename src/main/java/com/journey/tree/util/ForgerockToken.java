@@ -8,11 +8,9 @@ package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
 import org.apache.http.HttpEntity;
-import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.auth.node.api.NodeProcessException;
@@ -28,14 +26,21 @@ public class ForgerockToken {
 
     public void createToken(String adminUsername, String adminPassword, TreeContext context) throws NodeProcessException {
         JsonValue sharedState = context.sharedState;
-        String hostUrl = sharedState.get(Constants.HOST_URL).asString();
-        try (CloseableHttpClient httpClient = getHttpClient()) {
-            HttpPost httpPost1 = createPostRequest(hostUrl + Constants.FORGEROCK_GET_TOKEN_URL);
-            httpPost1.addHeader("Accept", "application/json");
-            httpPost1.addHeader("Content-Type", "application/json");
-            httpPost1.addHeader("X-OpenAM-Username", adminUsername);
-            httpPost1.addHeader("X-OpenAM-Password", adminPassword);
-            CloseableHttpResponse httpResponse = httpClient.execute(httpPost1);
+        String hostUrl = sharedState.get(Constants.FORGEROCK_HOST_URL).asString();
+        HttpConnectionClient connection = new HttpConnectionClient();
+        try (CloseableHttpClient httpClient = connection.getHttpClient(context)) {
+            HttpPost httpPost = connection.createPostRequest(hostUrl + Constants.FORGEROCK_GET_TOKEN_URL);
+            httpPost.addHeader("Accept", "application/json");
+            httpPost.addHeader("Content-Type", "application/json");
+            httpPost.addHeader("X-OpenAM-Username", adminUsername);
+            httpPost.addHeader("X-OpenAM-Password", adminPassword);
+            CloseableHttpResponse httpResponse = httpClient.execute(httpPost);
+            Integer responseCode = httpResponse.getStatusLine().getStatusCode();
+            logger.debug("get forgerock token api response code is:: " + responseCode);
+            if (responseCode == 403) {
+                logger.debug("invalid forgerock admin username/password combination");
+                throw new NodeProcessException("invalid forgerock admin username/password combination");
+            }
             HttpEntity entity = httpResponse.getEntity();
             if (entity != null) {
                 String result = EntityUtils.toString(entity);
@@ -51,20 +56,5 @@ public class ForgerockToken {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: " + e);
         }
-    }
-
-    public CloseableHttpClient getHttpClient() {
-        return buildDefaultClient();
-    }
-
-    public CloseableHttpClient buildDefaultClient() {
-        Integer timeout = Constants.REQUEST_TIMEOUT;
-        RequestConfig config = RequestConfig.custom().setConnectTimeout(timeout * 1000).setConnectionRequestTimeout(timeout * 1000).setSocketTimeout(timeout * 1000).build();
-        HttpClientBuilder clientBuilder = HttpClientBuilder.create();
-        return clientBuilder.setDefaultRequestConfig(config).build();
-    }
-
-    public HttpPost createPostRequest(String url) {
-        return new HttpPost(url);
     }
 }

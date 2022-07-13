@@ -74,10 +74,8 @@ public class JourneyNodePlugin extends AbstractNodeAmPlugin {
                         EnrollmentStatusCheck.class,
                         MethodCheck.class,
                         JourneyPipeline.class,
-                        JourneyMessageNode.class,
-                        JourneySuccessNode.class,
-                        JourneyFailureNode.class,
-                        JourneyTimeoutNode.class
+                        ErrorMessageNode.class,
+                        OutcomeNode.class
                 ));
     }
 
