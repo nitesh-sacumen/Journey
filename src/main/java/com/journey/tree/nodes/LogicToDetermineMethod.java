@@ -57,23 +57,18 @@ public class LogicToDetermineMethod implements Node {
     public Action process(TreeContext context) throws NodeProcessException {
         logger.debug("*********************LogicToDetermineMethod node********************");
         JsonValue sharedState = context.sharedState;
-        try {
-            if (sharedState.get(Constants.METHOD_NAME).isNotNull()) {
-                String methodName = sharedState.get(Constants.METHOD_NAME).asString();
-                logger.debug("method name received is " + methodName);
-                if (methodName == Constants.FACIAL_BIOMETRIC) {
-                    return goTo(Outcome.Facial_Biometrics).replaceSharedState(sharedState).build();
-                }
+        if (sharedState.get(Constants.METHOD_NAME).isNotNull()) {
+            String methodName = sharedState.get(Constants.METHOD_NAME).asString();
+            logger.debug("method name received is " + methodName);
+            if (methodName == Constants.FACIAL_BIOMETRIC) {
+                return goTo(Outcome.Facial_Biometrics).replaceSharedState(sharedState).build();
+            }
 //                else if (methodName == Constants.ONE_TIME_PASSWORD) {
 //                    return goTo(Outcome.One_Time_Password).replaceSharedState(sharedState).build();
 //                }
-                else if (methodName == Constants.MOBILE_APP) {
-                    return goTo(Outcome.Mobile_App).replaceSharedState(sharedState).build();
-                }
+            else if (methodName == Constants.MOBILE_APP) {
+                return goTo(Outcome.Mobile_App).replaceSharedState(sharedState).build();
             }
-        } catch (Exception e) {
-            logger.error(Arrays.toString(e.getStackTrace()));
-            throw new NodeProcessException("Exception is: ", e);
         }
         logger.debug("Unexpected error occurred, please contact administrator");
         throw new NodeProcessException("Unexpected error occurred, please contact administrator");

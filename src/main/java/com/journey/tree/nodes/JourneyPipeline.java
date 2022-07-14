@@ -38,6 +38,8 @@ public class JourneyPipeline implements Node {
     private final Config config;
     private static final String BUNDLE = "com/journey/tree/nodes/JourneyPipeline";
     private static final Logger logger = LoggerFactory.getLogger(JourneyPipeline.class);
+    CreateExecution createExecution;
+    RetrieveExecution retrieveExecution;
 
     /**
      * Configuration for the node.
@@ -58,8 +60,10 @@ public class JourneyPipeline implements Node {
      * @param config The service config.
      */
     @Inject
-    public JourneyPipeline(@Assisted JourneyPipeline.Config config) {
+    public JourneyPipeline(@Assisted JourneyPipeline.Config config, CreateExecution createExecution, RetrieveExecution retrieveExecution) {
         this.config = config;
+        this.createExecution = createExecution;
+        this.retrieveExecution = retrieveExecution;
     }
 
     /**
@@ -74,48 +78,39 @@ public class JourneyPipeline implements Node {
             throw new NodeProcessException("please provide pipeline key to proceed");
         }
         JsonValue sharedState = context.sharedState;
-        try {
-
-            if (!context.hasCallbacks()) {
-                List<Callback> cbList = new ArrayList<>();
-                ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1(sharedState.get(Constants.TYPE).asString()));
-                cbList.add(scriptTextOutputCallback);
-                return send(ImmutableList.copyOf(cbList)).build();
-            }
-            sharedState.put(Constants.PIPELINE_KEY, config.pipelineKey());
-            if (config.dashboardId() != null) {
-                sharedState.put(Constants.DASHBOARD_ID, config.dashboardId());
-            }
-            CreateExecution createExecution = new CreateExecution();
-            String executionId = createExecution.execute(context);
-            String type;
-            type = sharedState.get(Constants.TYPE).asString();
-            String executionStatus;
-            if (executionId != null) {
-                RetrieveExecution retrieveExecution = new RetrieveExecution();
-                executionStatus = retrieveExecution.retrieve(context, executionId);
-                if (executionStatus == Constants.EXECUTION_COMPLETED) {
-                    logger.debug(type + " with id " + executionId + " successfully completed");
-                    sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_COMPLETED);
-                    return goTo(Outcome.Successful).replaceSharedState(sharedState).build();
-                } else if (executionStatus == Constants.EXECUTION_FAILED) {
-                    logger.debug(type + " with id " + executionId + " failed");
-                    sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_FAILED);
-                    return goTo(Outcome.Error).replaceSharedState(sharedState).build();
-                } else {
-                    logger.debug(type + " with id " + executionId + " has a timeout");
-                    sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_TIMEOUT);
-                    return goTo(Outcome.Timeout).replaceSharedState(sharedState).build();
-                }
+        if (!context.hasCallbacks()) {
+            List<Callback> cbList = new ArrayList<>();
+            ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1(sharedState.get(Constants.TYPE).asString()));
+            cbList.add(scriptTextOutputCallback);
+            return send(ImmutableList.copyOf(cbList)).build();
+        }
+        sharedState.put(Constants.PIPELINE_KEY, config.pipelineKey());
+        if (config.dashboardId() != null) {
+            sharedState.put(Constants.DASHBOARD_ID, config.dashboardId());
+        }
+        String executionId = createExecution.execute(context);
+        String type;
+        type = sharedState.get(Constants.TYPE).asString();
+        String executionStatus;
+        if (executionId != null) {
+            executionStatus = retrieveExecution.retrieve(context, executionId);
+            if (executionStatus == Constants.EXECUTION_COMPLETED) {
+                logger.debug(type + " with id " + executionId + " successfully completed");
+                sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_COMPLETED);
+                return goTo(Outcome.Successful).replaceSharedState(sharedState).build();
+            } else if (executionStatus == Constants.EXECUTION_FAILED) {
+                logger.debug(type + " with id " + executionId + " failed");
+                sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_FAILED);
+                return goTo(Outcome.Error).replaceSharedState(sharedState).build();
             } else {
-                logger.debug("execution id not created/timeout");
+                logger.debug(type + " with id " + executionId + " has a timeout");
                 sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_TIMEOUT);
                 return goTo(Outcome.Timeout).replaceSharedState(sharedState).build();
             }
-        } catch (Exception e) {
-            logger.error(Arrays.toString(e.getStackTrace()));
-            e.printStackTrace();
-            throw new NodeProcessException("Exception is: ", e);
+        } else {
+            logger.debug("execution id not created/timeout");
+            sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_TIMEOUT);
+            return goTo(Outcome.Timeout).replaceSharedState(sharedState).build();
         }
     }
 
@@ -123,13 +118,7 @@ public class JourneyPipeline implements Node {
      * This function will create return a javascript based script .
      */
     String f1(String type) {
-        return "document.getElementById('loginButton_0').style.display = 'none';\r\n" +
-                "var header = document.createElement('h3');\r\n" +
-                "header.id='waitHeader';\r\n" +
-                "header.style.textAlign='center';\r\n" +
-                "header.innerHTML ='" + type + " initiated, please wait.';\r\n" +
-                "document.body.appendChild(header);\r\n" +
-                "document.getElementById('loginButton_0').click();\r\n";
+        return "document.getElementById('loginButton_0').style.display = 'none';\r\n" + "var header = document.createElement('h3');\r\n" + "header.id='waitHeader';\r\n" + "header.style.textAlign='center';\r\n" + "header.innerHTML ='" + type + " initiated, please wait.';\r\n" + "document.body.appendChild(header);\r\n" + "document.getElementById('loginButton_0').click();\r\n";
     }
 
     private Action.ActionBuilder goTo(Outcome outcome) {
@@ -165,9 +154,7 @@ public class JourneyPipeline implements Node {
         @Override
         public List<Outcome> getOutcomes(PreferredLocales locales, JsonValue nodeAttributes) {
             ResourceBundle bundle = locales.getBundleInPreferredLocale(JourneyPipeline.BUNDLE, JourneyPipeline.OutcomeProvider.class.getClassLoader());
-                return ImmutableList.of(new Outcome(JourneyPipeline.Outcome.Successful.name(), bundle.getString("successful")),
-                    new Outcome(JourneyPipeline.Outcome.Error.name(), bundle.getString("error")),
-                    new Outcome(JourneyPipeline.Outcome.Timeout.name(), bundle.getString("timeout")));
+            return ImmutableList.of(new Outcome(JourneyPipeline.Outcome.Successful.name(), bundle.getString("successful")), new Outcome(JourneyPipeline.Outcome.Error.name(), bundle.getString("error")), new Outcome(JourneyPipeline.Outcome.Timeout.name(), bundle.getString("timeout")));
         }
     }
 }

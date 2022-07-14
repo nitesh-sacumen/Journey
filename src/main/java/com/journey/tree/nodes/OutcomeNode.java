@@ -53,30 +53,26 @@ public class OutcomeNode implements Node {
      */
     private Action collectRegField(TreeContext context) {
         JsonValue sharedState = context.sharedState;
-        try {
-            String executionStatus;
-            if (sharedState.get(Constants.EXECUTION_STATUS).isNotNull()) {
-                executionStatus = sharedState.get(Constants.EXECUTION_STATUS).asString();
-                String type = sharedState.get(Constants.TYPE).asString();
-                if (Objects.equals(executionStatus, Constants.EXECUTION_COMPLETED)) {
-                    cbList.add(getTextOutputCallbackObject(type + " Complete"));
-                    cbList.add(getTextOutputCallbackObject("Thank you!"));
-                    cbList.add(getTextOutputCallbackObject("Your " + type + " is complete."));
-                    return send(ImmutableList.copyOf(cbList)).build();
-                } else if (Objects.equals(executionStatus, Constants.EXECUTION_FAILED)) {
-                    cbList.add(getTextOutputCallbackObject(type + " Failed"));
-                    cbList.add(getTextOutputCallbackObject("Oops, Your " + type + " has Failed."));
-                    return send(ImmutableList.copyOf(cbList)).build();
-                } else if (Objects.equals(executionStatus, Constants.EXECUTION_TIMEOUT)) {
-                    cbList.add(getTextOutputCallbackObject("Your " + type + " has a timeout."));
-                    cbList.add(getTextOutputCallbackObject("Try again!"));
-                    String[] choices = {"Retry"};
-                    cbList.add(new ConfirmationCallback(0, choices, 0));
-                    return send(ImmutableList.copyOf(cbList)).build();
-                }
+        String executionStatus;
+        if (sharedState.get(Constants.EXECUTION_STATUS).isNotNull()) {
+            executionStatus = sharedState.get(Constants.EXECUTION_STATUS).asString();
+            String type = sharedState.get(Constants.TYPE).asString();
+            if (Objects.equals(executionStatus, Constants.EXECUTION_COMPLETED)) {
+                cbList.add(getTextOutputCallbackObject(type + " Complete"));
+                cbList.add(getTextOutputCallbackObject("Thank you!"));
+                cbList.add(getTextOutputCallbackObject("Your " + type + " is complete."));
+                return send(ImmutableList.copyOf(cbList)).build();
+            } else if (Objects.equals(executionStatus, Constants.EXECUTION_FAILED)) {
+                cbList.add(getTextOutputCallbackObject(type + " Failed"));
+                cbList.add(getTextOutputCallbackObject("Oops, Your " + type + " has Failed."));
+                return send(ImmutableList.copyOf(cbList)).build();
+            } else if (Objects.equals(executionStatus, Constants.EXECUTION_TIMEOUT)) {
+                cbList.add(getTextOutputCallbackObject("Your " + type + " has a timeout."));
+                cbList.add(getTextOutputCallbackObject("Try again!"));
+                String[] choices = {"Retry"};
+                cbList.add(new ConfirmationCallback(0, choices, 0));
+                return send(ImmutableList.copyOf(cbList)).build();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
         logger.debug("no execution status found");
         return null;
@@ -89,19 +85,15 @@ public class OutcomeNode implements Node {
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
         logger.debug("*********************Outcome node********************");
-        try {
-            if (!context.hasCallbacks()) {
-                List<Callback> cbList = new ArrayList<>();
-                HiddenValueCallback hiddenValueCallback = new HiddenValueCallback("h1");
-                cbList.add(hiddenValueCallback);
-                ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1());
-                cbList.add(scriptTextOutputCallback);
-                return send(ImmutableList.copyOf(cbList)).build();
-            } else if (context.getCallback(HiddenValueCallback.class).isPresent()) {
-                return collectRegField(context);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (!context.hasCallbacks()) {
+            List<Callback> cbList = new ArrayList<>();
+            HiddenValueCallback hiddenValueCallback = new HiddenValueCallback("h1");
+            cbList.add(hiddenValueCallback);
+            ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1());
+            cbList.add(scriptTextOutputCallback);
+            return send(ImmutableList.copyOf(cbList)).build();
+        } else if (context.getCallback(HiddenValueCallback.class).isPresent()) {
+            return collectRegField(context);
         }
         Action action = checkExecutionStatus(context);
         return action;
