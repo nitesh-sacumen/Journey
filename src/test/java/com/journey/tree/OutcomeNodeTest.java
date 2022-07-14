@@ -52,7 +52,7 @@ public class OutcomeNodeTest {
 
         TreeContext treeContext = buildThreeContext(cbList,null);
         Action action = outcomeNode.process(treeContext);
-        Assert.assertNull(action);
+        Assert.assertNotNull(action);
     }
 
     @Test
@@ -65,11 +65,7 @@ public class OutcomeNodeTest {
         TreeContext treeContext = buildThreeContext(cbList,"execution_completed");
         Action action = outcomeNode.process(treeContext);
         Callback cb1 = action.callbacks.get(0);
-        Callback cb2 = action.callbacks.get(1);
-        Callback cb3 = action.callbacks.get(2);
         Assert.assertTrue(cb1 instanceof TextOutputCallback);
-        Assert.assertTrue(cb2 instanceof TextOutputCallback);
-        Assert.assertTrue(cb3 instanceof TextOutputCallback);
     }
 
     @Test
