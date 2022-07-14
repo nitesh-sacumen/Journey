@@ -51,7 +51,7 @@ public class JourneyPipelineTest {
     @Test
     public void testJourneyPipelineWithNullPipelineKey() throws NodeProcessException {
         journeyPipeline = new JourneyPipeline(config,createExecution,retrieveExecution);
-        Mockito.when(config.pipelineKey()).thenReturn(null);
+        Mockito.when(config.pipelineKey()).thenReturn("");
         TreeContext treeContext = buildThreeContext(Collections.emptyList(),null);
         Exception exception = Assert.expectThrows(NodeProcessException.class, () -> {
             journeyPipeline.process(treeContext);
@@ -67,6 +67,7 @@ public class JourneyPipelineTest {
     public void testJourneyPipelineWithNoCallbacks() throws NodeProcessException {
         journeyPipeline = new JourneyPipeline(config,createExecution,retrieveExecution);
         Mockito.when(config.pipelineKey()).thenReturn("test");
+        Mockito.when(config.dashboardId()).thenReturn("");
         TreeContext treeContext = buildThreeContext(Collections.emptyList(),null);
         Action action = journeyPipeline.process(treeContext);
         List<Callback> callbacks = action.callbacks;
@@ -83,6 +84,7 @@ public class JourneyPipelineTest {
 
         journeyPipeline = new JourneyPipeline(config,createExecution,retrieveExecution);
         Mockito.when(config.pipelineKey()).thenReturn("test");
+        Mockito.when(config.dashboardId()).thenReturn("");
         Mockito.when(createExecution.execute(treeContext)).thenReturn("testId");
         Mockito.when(retrieveExecution.retrieve(treeContext,"testId")).thenReturn("execution_completed");
         Action action = journeyPipeline.process(treeContext);
@@ -100,6 +102,7 @@ public class JourneyPipelineTest {
 
         journeyPipeline = new JourneyPipeline(config,createExecution,retrieveExecution);
         Mockito.when(config.pipelineKey()).thenReturn("test");
+        Mockito.when(config.dashboardId()).thenReturn("");
         Mockito.when(createExecution.execute(treeContext)).thenReturn("testId");
         Mockito.when(retrieveExecution.retrieve(treeContext,"testId")).thenReturn("execution_failed");
         Action action = journeyPipeline.process(treeContext);
@@ -117,6 +120,7 @@ public class JourneyPipelineTest {
 
         journeyPipeline = new JourneyPipeline(config,createExecution,retrieveExecution);
         Mockito.when(config.pipelineKey()).thenReturn("test");
+        Mockito.when(config.dashboardId()).thenReturn("");
         Mockito.when(createExecution.execute(treeContext)).thenReturn("testId");
         Mockito.when(retrieveExecution.retrieve(treeContext,"testId")).thenReturn("execution_timeout");
         Action action = journeyPipeline.process(treeContext);
@@ -134,6 +138,7 @@ public class JourneyPipelineTest {
 
         journeyPipeline = new JourneyPipeline(config,createExecution,retrieveExecution);
         Mockito.when(config.pipelineKey()).thenReturn("test");
+        Mockito.when(config.dashboardId()).thenReturn("");
         Mockito.when(createExecution.execute(treeContext)).thenReturn(null);
         Action action = journeyPipeline.process(treeContext);
         String outcome = action.outcome;
