@@ -150,6 +150,11 @@ public class CreateExecution {
             entityResponse = response.getEntity();
             result = EntityUtils.toString(entityResponse);
             jsonResponse = new JSONObject(result);
+            if (jsonResponse.has("errors")) {
+                JSONObject errorObj = (JSONObject) jsonResponse.get("errors");
+                logger.debug(errorObj.toString());
+                throw new NodeProcessException("Api responded with errors, please check logs for errors.");
+            }
             if (jsonResponse.has("id")) {
                 executionId = (String) jsonResponse.get("id");
             }

@@ -136,7 +136,8 @@ public class JourneyEnrollmentLookUp implements Node {
         logger.debug("*********************JourneyEnrollmentLookUp node********************");
         JsonValue sharedState = context.sharedState;
         Action action;
-        sharedState.put(Constants.REQUEST_TIMEOUT, config.requestTimeout());
+        Integer requestTimeout = config.requestTimeout() == null ? 0 : Math.abs(config.requestTimeout());
+        sharedState.put(Constants.REQUEST_TIMEOUT, requestTimeout);
         String username = sharedState.get(USERNAME).asString();
         Integer counter = setCounterValue(context);
         String uniqueIdentifier = config.uniqueIdentifier();
@@ -164,7 +165,7 @@ public class JourneyEnrollmentLookUp implements Node {
             String tokenId = sharedState.get(Constants.TOKEN_ID).asString();
             String groupName = config.groupName();
             String accountId = config.accountId();
-            timeToLive = config.timeToLive();
+            timeToLive = config.timeToLive() == null ? 0 : Math.abs(config.timeToLive());
             sharedState.put(Constants.ACCOUNT_ID, accountId);
             Boolean result = userDetails.getDetails(context, tokenId, groupName, username);
             if (!result) {
@@ -244,7 +245,7 @@ public class JourneyEnrollmentLookUp implements Node {
 
     private Action checkUniqueIdentifier(String uniqueIdentifier, TreeContext context, String username) {
         JsonValue sharedState = context.sharedState;
-        if (uniqueIdentifier.equalsIgnoreCase(Constants.UNIQUE_IDENTIFIER_USERNAME)) {
+        if (uniqueIdentifier == null || uniqueIdentifier.equalsIgnoreCase(Constants.UNIQUE_IDENTIFIER_USERNAME)) {
             sharedState.put(Constants.UNIQUE_ID, username);
         } else if (uniqueIdentifier.equalsIgnoreCase(Constants.UNIQUE_IDENTIFIER_EMAIL)) {
             if (sharedState.get(Constants.FORGEROCK_EMAIL).isNotNull()) {
@@ -261,7 +262,8 @@ public class JourneyEnrollmentLookUp implements Node {
                 return goTo(Outcome.Message).replaceSharedState(sharedState).build();
             }
         } else {
-            sharedState.put(Constants.UNIQUE_ID, username);
+            sharedState.put(Constants.ERROR_MESSAGE, "Invalid unique identifier provided");
+            return goTo(Outcome.Message).replaceSharedState(sharedState).build();
         }
         return null;
     }
@@ -295,15 +297,17 @@ public class JourneyEnrollmentLookUp implements Node {
 
     private Action checkRequiredValues(TreeContext context) {
         JsonValue sharedState = context.sharedState;
-        if (config.refreshToken().equals("") || config.accountId().equals("") || config.uniqueIdentifier().equals("") ||
-                config.adminUsername().equals("") || config.adminPassword().equals("") || config.groupName().equals("") ||
-                config.forgerockHostUrl().equals("")) {
+        if (config.refreshToken() == null || config.accountId() == null || config.uniqueIdentifier() == null ||
+                config.adminUsername() == null || config.adminPassword() == null || config.groupName() == null ||
+                config.forgerockHostUrl() == null) {
             logger.error("Please configure refresh token/account id/unique identifier/adminUsername/adminPassword/groupName/ForgeRock Host URL to proceed");
             sharedState.put(Constants.ERROR_MESSAGE, "Please configure refresh token/account id/unique identifier/adminUsername/adminPassword/groupName/ForgeRock Host URL to proceed");
             return goTo(JourneyEnrollmentLookUp.Outcome.Message).replaceSharedState(sharedState).build();
         }
-        sharedState.put(Constants.RETRIEVE_TIMEOUT, config.retrieveTimeout());
-        sharedState.put(Constants.RETRIEVE_DELAY, config.retrieveDelay());
+        Integer retrieveTimeout = config.retrieveTimeout() == null ? 0 : Math.abs(config.retrieveTimeout());
+        Integer retrieveDelay = config.retrieveDelay() == null ? 0 : Math.abs(config.retrieveDelay());
+        sharedState.put(Constants.RETRIEVE_TIMEOUT, retrieveTimeout);
+        sharedState.put(Constants.RETRIEVE_DELAY, retrieveDelay);
         sharedState.put(Constants.REFRESH_TOKEN, config.refreshToken());
         return null;
     }

@@ -78,13 +78,12 @@ public class JourneyPipeline implements Node {
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
         logger.debug("*********************JourneyPipeline node********************");
-        if (config.pipelineKey().equals("")) {
+        if (config.pipelineKey()==null) {
             logger.error("please provide pipeline key to proceed");
             throw new NodeProcessException("please provide pipeline key to proceed");
         }
         JsonValue sharedState = context.sharedState;
         try {
-
             if (!context.hasCallbacks()) {
                 List<Callback> cbList = new ArrayList<>();
                 ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1(sharedState.get(Constants.TYPE).asString()));
@@ -92,7 +91,7 @@ public class JourneyPipeline implements Node {
                 return send(ImmutableList.copyOf(cbList)).build();
             }
             sharedState.put(Constants.PIPELINE_KEY, config.pipelineKey());
-            if (!config.dashboardId().equals("")) {
+            if (config.dashboardId()!=null) {
                 sharedState.put(Constants.DASHBOARD_ID, config.dashboardId());
             }
             String executionId = createExecution.execute(context);
