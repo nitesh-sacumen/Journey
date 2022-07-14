@@ -44,7 +44,7 @@ public class ForgerockToken {
             CloseableHttpResponse httpResponse = httpClient.execute(httpPost);
             Integer responseCode = httpResponse.getStatusLine().getStatusCode();
             logger.debug("get forgerock token api response code is:: " + responseCode);
-            if (responseCode == 403) {
+            if (responseCode == 401) {
                 logger.debug("invalid forgerock admin username/password combination");
                 return false;
             }
