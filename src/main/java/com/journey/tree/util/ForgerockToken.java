@@ -10,6 +10,7 @@ import com.journey.tree.config.Constants;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.forgerock.json.JsonValue;
@@ -19,6 +20,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
 public class ForgerockToken {
@@ -37,8 +39,10 @@ public class ForgerockToken {
             CloseableHttpResponse httpResponse = httpClient.execute(httpPost);
             Integer responseCode = httpResponse.getStatusLine().getStatusCode();
             logger.debug("get forgerock token api response code is:: " + responseCode);
+            System.out.println("get forgerock token api response code is:: " + responseCode);
             if (responseCode == 403) {
                 logger.debug("invalid forgerock admin username/password combination");
+                System.out.println("invalid forgerock admin username/password combination");
                 throw new NodeProcessException("invalid forgerock admin username/password combination");
             }
             HttpEntity entity = httpResponse.getEntity();
@@ -52,6 +56,8 @@ public class ForgerockToken {
                 }
             }
 
+        } catch (ConnectTimeoutException | SocketTimeoutException e) {
+            logger.error(e.getMessage());
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: " + e);

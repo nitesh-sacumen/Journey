@@ -71,8 +71,8 @@ public class JourneyNodePlugin extends AbstractNodeAmPlugin {
     protected Map<String, Iterable<? extends Class<? extends Node>>> getNodesByVersion() {
         return ImmutableMap.of(
                 JourneyNodePlugin.currentVersion, asList(
-                        EnrollmentStatusCheck.class,
-                        MethodCheck.class,
+                        JourneyEnrollmentLookUp.class,
+                        LogicToDetermineMethod.class,
                         JourneyPipeline.class,
                         ErrorMessageNode.class,
                         OutcomeNode.class

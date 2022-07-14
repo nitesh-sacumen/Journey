@@ -10,6 +10,7 @@ import com.journey.tree.config.Constants;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.forgerock.json.JsonValue;
@@ -19,6 +20,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.SocketTimeoutException;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -40,6 +42,12 @@ public class RetrieveExecution {
         Integer retrieveTimeout = sharedState.get(Constants.RETRIEVE_TIMEOUT).asInteger();
         Integer retrieveDelay = sharedState.get(Constants.RETRIEVE_DELAY).asInteger();
         Boolean flag;
+        try {
+            Thread.sleep(3000);
+        } catch (Exception e) {
+            logger.error(Arrays.toString(e.getStackTrace()));
+            throw new NodeProcessException("Exception is: " + e);
+        }
         for (Integer j = 1; j <= retrieveTimeout; j++) {
             flag = checkExecutionResult(context, executionId);
             if (flag) {
@@ -71,6 +79,7 @@ public class RetrieveExecution {
             CloseableHttpResponse response = httpclient.execute(httpGet);
             responseCode = response.getStatusLine().getStatusCode();
             logger.debug("execution retrieve api response code is: " + responseCode);
+            System.out.println("execution retrieve api response code is: " + responseCode);
             HttpEntity entityResponse = response.getEntity();
             result = EntityUtils.toString(entityResponse);
             if (result != null) {
@@ -96,6 +105,8 @@ public class RetrieveExecution {
                     }
                 }
             }
+        } catch (ConnectTimeoutException | SocketTimeoutException e) {
+            logger.error(e.getMessage());
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: " + e);

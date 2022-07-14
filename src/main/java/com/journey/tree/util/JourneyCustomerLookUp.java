@@ -9,6 +9,7 @@ import com.journey.tree.config.Constants;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.forgerock.json.JsonValue;
@@ -19,6 +20,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
 public class JourneyCustomerLookUp {
@@ -41,11 +43,14 @@ public class JourneyCustomerLookUp {
             responseCode = response.getStatusLine().getStatusCode();
             sharedState.put(Constants.CUSTOMER_LOOKUP_RESPONSE_CODE, responseCode);
             logger.debug("journey customer look up api call response code is::" + responseCode);
+            System.out.println("journey customer look up api call response code is::" + responseCode);
             HttpEntity entityResponse = response.getEntity();
             String result = EntityUtils.toString(entityResponse);
             jsonResponse = new JSONObject(result);
             enrollments = populateJourneyCustomerDetails(context, jsonResponse);
 
+        } catch (ConnectTimeoutException | SocketTimeoutException e) {
+            logger.error(e.getMessage());
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: " + e);

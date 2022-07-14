@@ -11,6 +11,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.forgerock.json.JsonValue;
@@ -21,6 +22,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
 public class UserDetails {
@@ -50,6 +52,7 @@ public class UserDetails {
             CloseableHttpResponse httpResponse = httpClient.execute(httpGet);
             Integer responseCode = httpResponse.getStatusLine().getStatusCode();
             logger.debug("get forgerock cookie name api response code is:: " + responseCode);
+            System.out.println("get forgerock cookie name api response code is:: " + responseCode);
             HttpEntity entity = httpResponse.getEntity();
             if (entity != null) {
                 String result = EntityUtils.toString(entity);
@@ -60,6 +63,8 @@ public class UserDetails {
                     sharedState.put(Constants.COOKIE_NAME, cookieName);
                 }
             }
+        } catch (ConnectTimeoutException | SocketTimeoutException e) {
+            logger.error(e.getMessage());
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: " + e);
@@ -78,6 +83,7 @@ public class UserDetails {
             CloseableHttpResponse httpResponse = httpClient.execute(httpPost);
             Integer responseCode = httpResponse.getStatusLine().getStatusCode();
             logger.debug("get forgerock session details api response code is:: " + responseCode);
+            System.out.println("get forgerock session details api response code is:: " + responseCode);
             HttpEntity entity = httpResponse.getEntity();
             if (entity != null) {
                 String result = EntityUtils.toString(entity);
@@ -95,6 +101,8 @@ public class UserDetails {
                     }
                 }
             }
+        } catch (ConnectTimeoutException | SocketTimeoutException e) {
+            logger.error(e.getMessage());
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: " + e);
@@ -112,6 +120,7 @@ public class UserDetails {
             CloseableHttpResponse httpResponse = httpClient.execute(httpGet);
             Integer responseCode = httpResponse.getStatusLine().getStatusCode();
             logger.debug("get forgerock group details api response code is:: " + responseCode);
+            System.out.println("get forgerock group details api response code is:: " + responseCode);
             if (responseCode == 404) {
                 logger.debug("forgerock group cannot be found");
                 throw new NodeProcessException("forgerock group cannot be found");
@@ -133,6 +142,8 @@ public class UserDetails {
                     }
                 }
             }
+        } catch (ConnectTimeoutException | SocketTimeoutException e) {
+            logger.error(e.getMessage());
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: " + e);

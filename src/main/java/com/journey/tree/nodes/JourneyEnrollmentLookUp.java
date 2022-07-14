@@ -39,12 +39,12 @@ import java.util.ResourceBundle;
 import static org.forgerock.openam.auth.node.api.Action.send;
 import static org.forgerock.openam.auth.node.api.SharedStateConstants.USERNAME;
 
-@Node.Metadata(outcomeProvider = EnrollmentStatusCheck.EnrollmentStatusOutcomeProvider.class, configClass = EnrollmentStatusCheck.Config.class)
-public class EnrollmentStatusCheck implements Node {
-    private static final Logger logger = LoggerFactory.getLogger(EnrollmentStatusCheck.class);
+@Node.Metadata(outcomeProvider = JourneyEnrollmentLookUp.OutcomeProvider.class, configClass = JourneyEnrollmentLookUp.Config.class)
+public class JourneyEnrollmentLookUp implements Node {
+    private static final Logger logger = LoggerFactory.getLogger(JourneyEnrollmentLookUp.class);
     private final CoreWrapper coreWrapper;
 
-    private static final String BUNDLE = "com/journey/tree/nodes/EnrollmentStatusCheck";
+    private static final String BUNDLE = "com/journey/tree/nodes/JourneyEnrollmentLookUp";
 
     private final Config config;
 
@@ -93,7 +93,7 @@ public class EnrollmentStatusCheck implements Node {
      * @param config The service config and coreWrapper
      */
     @Inject
-    public EnrollmentStatusCheck(@Assisted Config config, CoreWrapper coreWrapper) {
+    public JourneyEnrollmentLookUp(@Assisted Config config, CoreWrapper coreWrapper) {
         this.config = config;
         this.coreWrapper = coreWrapper;
     }
@@ -104,7 +104,7 @@ public class EnrollmentStatusCheck implements Node {
      */
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
-        logger.debug("*********************Enrollment Status Check********************");
+        logger.debug("*********************JourneyEnrollmentLookUp node********************");
         JsonValue sharedState = context.sharedState;
         Action action;
         sharedState.put(Constants.REQUEST_TIMEOUT, config.requestTimeout());
@@ -178,7 +178,7 @@ public class EnrollmentStatusCheck implements Node {
                                 logger.debug("No suitable enrollment method found for journey customer");
                                 System.out.println("No suitable enrollment method found for journey customer");
                                 sharedState.put(Constants.ERROR_MESSAGE, "No suitable enrollment method found for journey customer");
-                                return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                                return goTo(Outcome.Message).replaceSharedState(sharedState).build();
                             }
                         }
                     } else {//this code block will only execute if the customer doesn't have any enrollment
@@ -188,31 +188,31 @@ public class EnrollmentStatusCheck implements Node {
                             logger.debug("No enrollment method found for journey customer");
                             System.out.println("No enrollment method found for journey customer");
                             sharedState.put(Constants.ERROR_MESSAGE, "No enrollment method found for journey customer");
-                            return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                            return goTo(Outcome.Message).replaceSharedState(sharedState).build();
                         }
                     }
                 }
                 if ((sharedState.get(Constants.METHOD_NAME).asString() == Constants.FACIAL_BIOMETRIC) && (sharedState.get(Constants.JOURNEY_PHONE_NUMBER).isNull() && sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).isNull())) {
                     sharedState.put(Constants.ERROR_MESSAGE, "User phone number is required to proceed");
-                    return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                    return goTo(Outcome.Message).replaceSharedState(sharedState).build();
                 } else if ((sharedState.get(Constants.METHOD_NAME).asString() == Constants.MOBILE_APP) && sharedState.get(Constants.DEVICE_ID).isNull()) {
                     sharedState.put(Constants.ERROR_MESSAGE, "Mobile device id is required to proceed");
-                    return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                    return goTo(Outcome.Message).replaceSharedState(sharedState).build();
                 }
                 if (flag) {
                     logger.debug("connecting with has enrollments");
                     sharedState.put(Constants.TYPE, "Authentication");
-                    return goTo(EnrollmentStatusCheckOutcome.Has_Enrollments).replaceSharedState(sharedState).build();
+                    return goTo(Outcome.Has_Enrollments).replaceSharedState(sharedState).build();
                 } else {
                     logger.debug("connecting with no enrollment");
                     sharedState.put(Constants.TYPE, "Enrollment");
-                    return goTo(EnrollmentStatusCheckOutcome.No_Enrollments).replaceSharedState(sharedState).build();
+                    return goTo(Outcome.No_Enrollments).replaceSharedState(sharedState).build();
                 }
             }
         }
         logger.debug("An unexpected error occurred");
         sharedState.put(Constants.ERROR_MESSAGE, "An unexpected error occurred");
-        return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+        return goTo(Outcome.Message).replaceSharedState(sharedState).build();
     }
 
     private Action checkUniqueIdentifier(String uniqueIdentifier, TreeContext context, String username) {
@@ -224,18 +224,18 @@ public class EnrollmentStatusCheck implements Node {
                 sharedState.put(Constants.UNIQUE_ID, sharedState.get(Constants.FORGEROCK_EMAIL));
             } else {
                 sharedState.put(Constants.ERROR_MESSAGE, "Forgerock email id is required to proceed");
-                return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                return goTo(Outcome.Message).replaceSharedState(sharedState).build();
             }
         } else if (uniqueIdentifier.equalsIgnoreCase(Constants.UNIQUE_IDENTIFIER_FORGEROCK_ID)) {
             if (sharedState.get(Constants.FORGEROCK_ID).isNotNull()) {
                 sharedState.put(Constants.UNIQUE_ID, sharedState.get(Constants.FORGEROCK_ID));
             } else {
                 sharedState.put(Constants.ERROR_MESSAGE, "Forgerock id is required to proceed");
-                return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+                return goTo(Outcome.Message).replaceSharedState(sharedState).build();
             }
         } else {
             sharedState.put(Constants.ERROR_MESSAGE, "Invalid user identifier provided");
-            return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+            return goTo(Outcome.Message).replaceSharedState(sharedState).build();
         }
         return null;
     }
@@ -263,7 +263,7 @@ public class EnrollmentStatusCheck implements Node {
             logger.debug("No suitable enrollment method found for non journey existent user");
             System.out.println("No suitable enrollment method found for non journey existent user");
             sharedState.put(Constants.ERROR_MESSAGE, "No enrollment method found for non journey existent user");
-            return goTo(EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+            return goTo(Outcome.Message).replaceSharedState(sharedState).build();
         }
         return null;
     }
@@ -273,7 +273,7 @@ public class EnrollmentStatusCheck implements Node {
         if (config.refreshToken() == null || config.accountId() == null || config.uniqueIdentifier() == null || config.adminUsername() == null || config.adminPassword() == null || config.groupName() == null || config.retrieveTimeout() == null || config.retrieveDelay() == null || config.forgerockHostUrl() == null || config.requestTimeout() == null || config.timeToLive() == null) {
             logger.error("Please configure refresh token/timeToLive/account id/unique identifier/adminUsername/adminPassword/groupName/retrieveTimeout/retrieveDelay/ForgeRock Host URL/Request timeout to proceed");
             sharedState.put(Constants.ERROR_MESSAGE, "Please configure refresh token/timeToLive/account id/unique identifier/adminUsername/adminPassword/groupName/retrieveTimeout/retrieveDelay/ForgeRock Host URL/Request timeout to proceed");
-            return goTo(EnrollmentStatusCheck.EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+            return goTo(JourneyEnrollmentLookUp.Outcome.Message).replaceSharedState(sharedState).build();
         }
         sharedState.put(Constants.RETRIEVE_TIMEOUT, config.retrieveTimeout());
         sharedState.put(Constants.RETRIEVE_DELAY, config.retrieveDelay());
@@ -287,7 +287,7 @@ public class EnrollmentStatusCheck implements Node {
         Boolean flag = ForgerockUser.getDetails(username, coreWrapper, context);
         if (!flag) {
             sharedState.put(Constants.ERROR_MESSAGE, "Invalid forgerock username/ minimum length should be 8 characters");
-            return goTo(EnrollmentStatusCheck.EnrollmentStatusCheckOutcome.Message).replaceSharedState(sharedState).build();
+            return goTo(JourneyEnrollmentLookUp.Outcome.Message).replaceSharedState(sharedState).build();
         }
         String adminUsername = config.adminUsername();
         String adminPassword = config.adminPassword();
@@ -299,14 +299,14 @@ public class EnrollmentStatusCheck implements Node {
         return send(ImmutableList.copyOf(cbList)).build();
     }
 
-    private Action.ActionBuilder goTo(EnrollmentStatusCheck.EnrollmentStatusCheckOutcome outcome) {
+    private Action.ActionBuilder goTo(JourneyEnrollmentLookUp.Outcome outcome) {
         return Action.goTo(outcome.name());
     }
 
     /**
      * The possible outcomes for the EnrollmentStatusCheck.
      */
-    public enum EnrollmentStatusCheckOutcome {
+    public enum Outcome {
         /**
          * selection of Has_Enrollments.
          */
@@ -325,7 +325,7 @@ public class EnrollmentStatusCheck implements Node {
     /**
      * This class will create customized outcome for the node.
      */
-    public static class EnrollmentStatusOutcomeProvider implements org.forgerock.openam.auth.node.api.OutcomeProvider {
+    public static class OutcomeProvider implements org.forgerock.openam.auth.node.api.OutcomeProvider {
         /**
          * @param locales        Local property file for configuration.
          * @param nodeAttributes Node attributes for outcomes
@@ -333,8 +333,12 @@ public class EnrollmentStatusCheck implements Node {
          */
         @Override
         public List<Outcome> getOutcomes(PreferredLocales locales, JsonValue nodeAttributes) {
-            ResourceBundle bundle = locales.getBundleInPreferredLocale(EnrollmentStatusCheck.BUNDLE, EnrollmentStatusCheck.EnrollmentStatusOutcomeProvider.class.getClassLoader());
-            return ImmutableList.of(new Outcome(EnrollmentStatusCheckOutcome.Has_Enrollments.name(), bundle.getString("hasEnrollments")), new Outcome(EnrollmentStatusCheckOutcome.No_Enrollments.name(), bundle.getString("noEnrollments")), new Outcome(EnrollmentStatusCheckOutcome.Message.name(), bundle.getString("message")));
+            ResourceBundle bundle = locales.getBundleInPreferredLocale(JourneyEnrollmentLookUp.BUNDLE, JourneyEnrollmentLookUp.Outcome.class.getClassLoader());
+            return ImmutableList.of(new Outcome(JourneyEnrollmentLookUp.Outcome.Has_Enrollments.name(),
+                            bundle.getString("hasEnrollments")),
+                    new Outcome(JourneyEnrollmentLookUp.Outcome.No_Enrollments.name(),
+                            bundle.getString("noEnrollments")), new Outcome(JourneyEnrollmentLookUp.Outcome.Message.name(),
+                            bundle.getString("message")));
         }
     }
 

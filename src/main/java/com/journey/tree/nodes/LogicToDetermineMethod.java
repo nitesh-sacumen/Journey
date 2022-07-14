@@ -10,8 +10,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.inject.assistedinject.Assisted;
 import com.journey.tree.config.Constants;
 import org.forgerock.json.JsonValue;
-import org.forgerock.openam.auth.node.api.*;
+import org.forgerock.openam.auth.node.api.Action;
 import org.forgerock.openam.auth.node.api.Action.ActionBuilder;
+import org.forgerock.openam.auth.node.api.Node;
+import org.forgerock.openam.auth.node.api.NodeProcessException;
+import org.forgerock.openam.auth.node.api.TreeContext;
 import org.forgerock.util.i18n.PreferredLocales;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,13 +24,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 
-@Node.Metadata(outcomeProvider = MethodCheck.MethodCheckOutcomeProvider.class, configClass =
-        MethodCheck.Config.class)
-public class MethodCheck implements Node {
+@Node.Metadata(outcomeProvider = LogicToDetermineMethod.OutcomeProvider.class, configClass =
+        LogicToDetermineMethod.Config.class)
+public class LogicToDetermineMethod implements Node {
 
     private final Config config;
-    private static final String BUNDLE = "com/journey/tree/nodes/MethodCheck";
-    private final static Logger logger = LoggerFactory.getLogger(MethodCheck.class);
+    private static final String BUNDLE = "com/journey/tree/nodes/LogicToDetermineMethod";
+    private final static Logger logger = LoggerFactory.getLogger(LogicToDetermineMethod.class);
 
     /**
      * Configuration for the node.
@@ -42,7 +45,7 @@ public class MethodCheck implements Node {
      * @param config The service config.
      */
     @Inject
-    public MethodCheck(@Assisted Config config) {
+    public LogicToDetermineMethod(@Assisted Config config) {
         this.config = config;
     }
 
@@ -52,18 +55,20 @@ public class MethodCheck implements Node {
      */
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
-        logger.debug("*********************MethodCheck node********************");
+        logger.debug("*********************LogicToDetermineMethod node********************");
         JsonValue sharedState = context.sharedState;
         try {
             if (sharedState.get(Constants.METHOD_NAME).isNotNull()) {
                 String methodName = sharedState.get(Constants.METHOD_NAME).asString();
                 logger.debug("method name received is " + methodName);
                 if (methodName == Constants.FACIAL_BIOMETRIC) {
-                    return goTo(MethodCheckOutcome.Facial_Biometrics).replaceSharedState(sharedState).build();
-                } else if (methodName == Constants.ONE_TIME_PASSWORD) {
-                    return goTo(MethodCheckOutcome.One_Time_Password).replaceSharedState(sharedState).build();
-                } else if (methodName == Constants.MOBILE_APP) {
-                    return goTo(MethodCheckOutcome.Mobile_App).replaceSharedState(sharedState).build();
+                    return goTo(Outcome.Facial_Biometrics).replaceSharedState(sharedState).build();
+                }
+//                else if (methodName == Constants.ONE_TIME_PASSWORD) {
+//                    return goTo(Outcome.One_Time_Password).replaceSharedState(sharedState).build();
+//                }
+                else if (methodName == Constants.MOBILE_APP) {
+                    return goTo(Outcome.Mobile_App).replaceSharedState(sharedState).build();
                 }
             }
         } catch (Exception e) {
@@ -74,14 +79,14 @@ public class MethodCheck implements Node {
         throw new NodeProcessException("Unexpected error occurred, please contact administrator");
     }
 
-    private ActionBuilder goTo(MethodCheckOutcome outcome) {
+    private ActionBuilder goTo(Outcome outcome) {
         return Action.goTo(outcome.name());
     }
 
     /**
      * The possible outcomes for the MethodCheck.
      */
-    public enum MethodCheckOutcome {
+    public enum Outcome {
         /**
          * selection of Facial_Biometrics.
          */
@@ -89,7 +94,7 @@ public class MethodCheck implements Node {
         /**
          * selection of One_Time_Password.
          */
-        One_Time_Password,
+       // One_Time_Password,
         /**
          * selection for Mobile_App.
          */
@@ -100,7 +105,7 @@ public class MethodCheck implements Node {
     /**
      * This class will create customized outcome for the node.
      */
-    public static class MethodCheckOutcomeProvider implements OutcomeProvider {
+    public static class OutcomeProvider implements org.forgerock.openam.auth.node.api.OutcomeProvider {
 
         /**
          * @param locales        Local property file for configuration.
@@ -109,11 +114,11 @@ public class MethodCheck implements Node {
          */
         @Override
         public List<Outcome> getOutcomes(PreferredLocales locales, JsonValue nodeAttributes) {
-            ResourceBundle bundle = locales.getBundleInPreferredLocale(MethodCheck.BUNDLE,
-                    MethodCheckOutcomeProvider.class.getClassLoader());
-            return ImmutableList.of(new Outcome(MethodCheckOutcome.Facial_Biometrics.name(), bundle.getString("facialBiometrics")),
-                    new Outcome(MethodCheckOutcome.One_Time_Password.name(), bundle.getString("oneTimePassword")),
-                    new Outcome(MethodCheckOutcome.Mobile_App.name(), bundle.getString("mobileApp")));
+            ResourceBundle bundle = locales.getBundleInPreferredLocale(LogicToDetermineMethod.BUNDLE,
+                    JourneyEnrollmentLookUp.OutcomeProvider.class.getClassLoader());
+            return ImmutableList.of(new Outcome(LogicToDetermineMethod.Outcome.Facial_Biometrics.name(), bundle.getString("facialBiometrics")),
+                   // new Outcome(LogicToDetermineMethod.Outcome.One_Time_Password.name(), bundle.getString("oneTimePassword")),
+                    new Outcome(LogicToDetermineMethod.Outcome.Mobile_App.name(), bundle.getString("mobileApp")));
         }
     }
 }
