@@ -21,20 +21,26 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
 public class JourneyGetAccessToken {
     private final static Logger logger = LoggerFactory.getLogger(JourneyGetAccessToken.class);
+    HttpConnectionClient httpConnectionClient;
+
+    @Inject
+    public JourneyGetAccessToken(HttpConnectionClient httpConnectionClient) {
+        this.httpConnectionClient = httpConnectionClient;
+    }
 
     public JSONObject createAccessToken(TreeContext context, Integer timeToLive) throws NodeProcessException {
         JSONObject jsonResponse = null;
         Integer responseCode;
-        HttpConnectionClient connection = new HttpConnectionClient();
-        try (CloseableHttpClient httpclient = connection.getHttpClient(context)) {
+        try (CloseableHttpClient httpclient = httpConnectionClient.getHttpClient(context)) {
             JsonValue sharedState = context.sharedState;
             String refreshToken = sharedState.get(Constants.REFRESH_TOKEN).asString();
-            HttpPost httpPost = connection.createPostRequest(Constants.API_TOKEN_URL);
+            HttpPost httpPost = httpConnectionClient.createPostRequest(Constants.API_TOKEN_URL);
             JSONObject jsonObj = new JSONObject();
             jsonObj.put("ttl", timeToLive);
             httpPost.addHeader("Accept", "application/json");
@@ -45,7 +51,6 @@ public class JourneyGetAccessToken {
             CloseableHttpResponse response = httpclient.execute(httpPost);
             responseCode = response.getStatusLine().getStatusCode();
             logger.debug("journey access token api call response code is:: " + responseCode);
-            System.out.println("journey access token api call response code is:: " + responseCode);
             HttpEntity entityResponse = response.getEntity();
             String result = EntityUtils.toString(entityResponse);
             jsonResponse = new JSONObject(result);

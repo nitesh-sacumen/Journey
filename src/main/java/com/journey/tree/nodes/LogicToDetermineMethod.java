@@ -20,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -89,7 +88,7 @@ public class LogicToDetermineMethod implements Node {
         /**
          * selection of One_Time_Password.
          */
-       // One_Time_Password,
+        // One_Time_Password,
         /**
          * selection for Mobile_App.
          */
@@ -112,7 +111,7 @@ public class LogicToDetermineMethod implements Node {
             ResourceBundle bundle = locales.getBundleInPreferredLocale(LogicToDetermineMethod.BUNDLE,
                     JourneyEnrollmentLookUp.OutcomeProvider.class.getClassLoader());
             return ImmutableList.of(new Outcome(LogicToDetermineMethod.Outcome.Facial_Biometrics.name(), bundle.getString("facialBiometrics")),
-                   // new Outcome(LogicToDetermineMethod.Outcome.One_Time_Password.name(), bundle.getString("oneTimePassword")),
+                    // new Outcome(LogicToDetermineMethod.Outcome.One_Time_Password.name(), bundle.getString("oneTimePassword")),
                     new Outcome(LogicToDetermineMethod.Outcome.Mobile_App.name(), bundle.getString("mobileApp")));
         }
     }

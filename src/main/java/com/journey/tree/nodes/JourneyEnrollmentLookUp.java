@@ -43,48 +43,72 @@ import static org.forgerock.openam.auth.node.api.SharedStateConstants.USERNAME;
 public class JourneyEnrollmentLookUp implements Node {
     private static final Logger logger = LoggerFactory.getLogger(JourneyEnrollmentLookUp.class);
     private final CoreWrapper coreWrapper;
-
+    JourneyGetAccessToken journeyGetAccessToken;
+    JourneyCustomerLookUp journeyCustomerLookUp;
+    ForgerockToken forgerockToken;
     private static final String BUNDLE = "com/journey/tree/nodes/JourneyEnrollmentLookUp";
 
     private final Config config;
+    UserDetails userDetails;
 
     /**
      * Configuration for the node.
      */
     public interface Config {
         @Attribute(order = 100, requiredValue = true)
-        String refreshToken();
+        default String refreshToken() {
+            return "";
+        }
 
         @Attribute(order = 200, requiredValue = true)
-        Integer timeToLive();
+        default Integer timeToLive() {
+            return 0;
+        }
 
         @Attribute(order = 300, requiredValue = true)
-        String accountId();
+        default String accountId() {
+            return "";
+        }
 
         @Attribute(order = 400, requiredValue = true)
-        String uniqueIdentifier();
+        default String uniqueIdentifier() {
+            return "username";
+        }
 
         @Attribute(order = 500, requiredValue = true)
-        String adminUsername();
+        default String adminUsername() {
+            return "";
+        }
 
         @Attribute(order = 600, requiredValue = true)
-        String adminPassword();
+        default String adminPassword() {
+            return "";
+        }
 
         @Attribute(order = 700, requiredValue = true)
-        String groupName();
+        default String groupName() {
+            return "";
+        }
 
         @Attribute(order = 800, requiredValue = true)
-        Integer retrieveTimeout();
+        default Integer retrieveTimeout() {
+            return 0;
+        }
 
         @Attribute(order = 900, requiredValue = true)
-        Integer retrieveDelay();
+        default Integer retrieveDelay() {
+            return 0;
+        }
 
         @Attribute(order = 1000, requiredValue = true)
-        String forgerockHostUrl();
+        default String forgerockHostUrl() {
+            return "";
+        }
 
         @Attribute(order = 1100, requiredValue = true)
-        Integer requestTimeout();
-
+        default Integer requestTimeout() {
+            return 0;
+        }
     }
 
     /**
@@ -93,9 +117,14 @@ public class JourneyEnrollmentLookUp implements Node {
      * @param config The service config and coreWrapper
      */
     @Inject
-    public JourneyEnrollmentLookUp(@Assisted Config config, CoreWrapper coreWrapper) {
+    public JourneyEnrollmentLookUp(@Assisted Config config, CoreWrapper coreWrapper, JourneyGetAccessToken journeyGetAccessToken, JourneyCustomerLookUp journeyCustomerLookUp,
+                                   ForgerockToken forgerockToken, UserDetails userDetails) {
         this.config = config;
         this.coreWrapper = coreWrapper;
+        this.journeyGetAccessToken = journeyGetAccessToken;
+        this.journeyCustomerLookUp = journeyCustomerLookUp;
+        this.forgerockToken = forgerockToken;
+        this.userDetails = userDetails;
     }
 
     /**
@@ -113,8 +142,6 @@ public class JourneyEnrollmentLookUp implements Node {
         String uniqueIdentifier = config.uniqueIdentifier();
         Boolean flag = false;
         JSONObject jsonResponse;
-        JourneyGetAccessToken journeyGetAccessToken;
-        JourneyCustomerLookUp journeyCustomerLookUp;
         String token = null;
         Integer timeToLive;
         if (counter == 1) {
@@ -122,26 +149,29 @@ public class JourneyEnrollmentLookUp implements Node {
             if (action != null) {
                 return action;
             }
+            action = checkUserAndCreateToken(context, username);
+            if (action != null) {
+                return action;
+            }
+
+        } else if (counter == 2) {
+            sharedState.put(Constants.COUNTER, null);
             logger.debug("selected unique identifier is: " + uniqueIdentifier);
             action = checkUniqueIdentifier(uniqueIdentifier, context, username);
             if (action != null) {
                 return action;
             }
-            action = checkUserAndCreateToken(context, username);
-            if (action != null) {
-                return action;
-            }
-        } else if (counter == 2) {
-            sharedState.put(Constants.COUNTER, null);
             String tokenId = sharedState.get(Constants.TOKEN_ID).asString();
             String groupName = config.groupName();
             String accountId = config.accountId();
             timeToLive = config.timeToLive();
             sharedState.put(Constants.ACCOUNT_ID, accountId);
-            UserDetails userDetails = new UserDetails();
-            Boolean isAdmin = userDetails.getDetails(context, tokenId, groupName, username);
-            sharedState.put(Constants.IS_ADMIN, isAdmin);
-            journeyGetAccessToken = new JourneyGetAccessToken();
+            Boolean result = userDetails.getDetails(context, tokenId, groupName, username);
+            if (!result) {
+                sharedState.put(Constants.ERROR_MESSAGE, "Invalid forgerock group");
+                return goTo(Outcome.Message).replaceSharedState(sharedState).build();
+            }
+            Boolean isAdmin = sharedState.get(Constants.IS_ADMIN).asBoolean();
             jsonResponse = journeyGetAccessToken.createAccessToken(context, timeToLive);
             try {
                 if (jsonResponse.has("token")) {
@@ -153,7 +183,6 @@ public class JourneyEnrollmentLookUp implements Node {
                 throw new NodeProcessException("Exception is: " + e);
             }
             if (token != null) {
-                journeyCustomerLookUp = new JourneyCustomerLookUp();
                 JSONArray enrollments = journeyCustomerLookUp.customerLookUp(context);
                 ArrayList<String> adminUserPriorities = Priorities.getAdminUserPriorities();
                 ArrayList<String> nonAdminUserPriorities = Priorities.getNonAdminUserPriorities();
@@ -176,7 +205,6 @@ public class JourneyEnrollmentLookUp implements Node {
                             flag = Priorities.methodCheck(nonAdminUserPriorities, enrollments, sharedState, isAdmin);
                             if (!flag) {
                                 logger.debug("No suitable enrollment method found for journey customer");
-                                System.out.println("No suitable enrollment method found for journey customer");
                                 sharedState.put(Constants.ERROR_MESSAGE, "No suitable enrollment method found for journey customer");
                                 return goTo(Outcome.Message).replaceSharedState(sharedState).build();
                             }
@@ -186,7 +214,6 @@ public class JourneyEnrollmentLookUp implements Node {
                             sharedState.put(Constants.METHOD_NAME, adminUserPriorities.get(0));
                         } else {
                             logger.debug("No enrollment method found for journey customer");
-                            System.out.println("No enrollment method found for journey customer");
                             sharedState.put(Constants.ERROR_MESSAGE, "No enrollment method found for journey customer");
                             return goTo(Outcome.Message).replaceSharedState(sharedState).build();
                         }
@@ -234,8 +261,7 @@ public class JourneyEnrollmentLookUp implements Node {
                 return goTo(Outcome.Message).replaceSharedState(sharedState).build();
             }
         } else {
-            sharedState.put(Constants.ERROR_MESSAGE, "Invalid user identifier provided");
-            return goTo(Outcome.Message).replaceSharedState(sharedState).build();
+            sharedState.put(Constants.UNIQUE_ID, username);
         }
         return null;
     }
@@ -261,7 +287,6 @@ public class JourneyEnrollmentLookUp implements Node {
             sharedState.put(Constants.METHOD_NAME, adminUserPriorities.get(0));
         } else {
             logger.debug("No suitable enrollment method found for non journey existent user");
-            System.out.println("No suitable enrollment method found for non journey existent user");
             sharedState.put(Constants.ERROR_MESSAGE, "No enrollment method found for non journey existent user");
             return goTo(Outcome.Message).replaceSharedState(sharedState).build();
         }
@@ -270,9 +295,11 @@ public class JourneyEnrollmentLookUp implements Node {
 
     private Action checkRequiredValues(TreeContext context) {
         JsonValue sharedState = context.sharedState;
-        if (config.refreshToken() == null || config.accountId() == null || config.uniqueIdentifier() == null || config.adminUsername() == null || config.adminPassword() == null || config.groupName() == null || config.retrieveTimeout() == null || config.retrieveDelay() == null || config.forgerockHostUrl() == null || config.requestTimeout() == null || config.timeToLive() == null) {
-            logger.error("Please configure refresh token/timeToLive/account id/unique identifier/adminUsername/adminPassword/groupName/retrieveTimeout/retrieveDelay/ForgeRock Host URL/Request timeout to proceed");
-            sharedState.put(Constants.ERROR_MESSAGE, "Please configure refresh token/timeToLive/account id/unique identifier/adminUsername/adminPassword/groupName/retrieveTimeout/retrieveDelay/ForgeRock Host URL/Request timeout to proceed");
+        if (config.refreshToken().equals("") || config.accountId().equals("") || config.uniqueIdentifier().equals("") ||
+                config.adminUsername().equals("") || config.adminPassword().equals("") || config.groupName().equals("") ||
+                config.forgerockHostUrl().equals("")) {
+            logger.error("Please configure refresh token/account id/unique identifier/adminUsername/adminPassword/groupName/ForgeRock Host URL to proceed");
+            sharedState.put(Constants.ERROR_MESSAGE, "Please configure refresh token/account id/unique identifier/adminUsername/adminPassword/groupName/ForgeRock Host URL to proceed");
             return goTo(JourneyEnrollmentLookUp.Outcome.Message).replaceSharedState(sharedState).build();
         }
         sharedState.put(Constants.RETRIEVE_TIMEOUT, config.retrieveTimeout());
@@ -291,8 +318,11 @@ public class JourneyEnrollmentLookUp implements Node {
         }
         String adminUsername = config.adminUsername();
         String adminPassword = config.adminPassword();
-        ForgerockToken forgerockToken = new ForgerockToken();
-        forgerockToken.createToken(adminUsername, adminPassword, context);
+        Boolean result = forgerockToken.createToken(adminUsername, adminPassword, context);
+        if (!result) {
+            sharedState.put(Constants.ERROR_MESSAGE, "Invalid forgerock admin username/password");
+            return goTo(JourneyEnrollmentLookUp.Outcome.Message).replaceSharedState(sharedState).build();
+        }
         List<Callback> cbList = new ArrayList<>();
         ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1());
         cbList.add(scriptTextOutputCallback);

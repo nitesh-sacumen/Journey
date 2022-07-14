@@ -26,7 +26,7 @@ public class ForgerockUser {
     public static Boolean getDetails(String username, CoreWrapper coreWrapper, TreeContext context) throws NodeProcessException {
         try {
             AMIdentity userIdentity = coreWrapper.getIdentity(username, context.sharedState.get(REALM).asString());
-            if (userIdentity == null || username.length() < 8) {
+            if (userIdentity == null) {
                 return false;
             }
             logger.debug("forgerock user exist");

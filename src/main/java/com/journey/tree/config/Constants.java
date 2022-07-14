@@ -5,6 +5,7 @@
  * throughout the application
  */
 package com.journey.tree.config;
+
 public final class Constants {
 
     private Constants() {
@@ -54,4 +55,5 @@ public final class Constants {
     public static final String RETRIEVE_DELAY = "retrieve_delay";
     public static final String FORGEROCK_HOST_URL = "forgerock_host_url";
     public static final String EXECUTION_STATUS = "execution_status";
+    public static final String RETRIEVE_API_CONNECTION = "retrieve_api_connection";
 }

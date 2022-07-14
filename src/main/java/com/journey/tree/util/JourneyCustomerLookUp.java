@@ -20,35 +20,39 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
 public class JourneyCustomerLookUp {
     private static final Logger logger = LoggerFactory.getLogger(JourneyCustomerLookUp.class);
+    HttpConnectionClient httpConnectionClient;
+
+    @Inject
+    public JourneyCustomerLookUp(HttpConnectionClient httpConnectionClient) {
+        this.httpConnectionClient = httpConnectionClient;
+    }
 
     public JSONArray customerLookUp(TreeContext context) throws NodeProcessException {
         JSONObject jsonResponse;
         JSONArray enrollments = null;
         Integer responseCode;
         JsonValue sharedState = context.sharedState;
-        HttpConnectionClient connection = new HttpConnectionClient();
-        try (CloseableHttpClient httpclient = connection.getHttpClient(context)) {
+        try (CloseableHttpClient httpclient = httpConnectionClient.getHttpClient(context)) {
             String uniqueId = sharedState.get(Constants.UNIQUE_ID).asString();
             String accountId = sharedState.get(Constants.ACCOUNT_ID).asString();
             String token = sharedState.get(Constants.API_ACCESS_TOKEN).asString();
-            HttpGet httpGet = connection.createGetRequest(Constants.ENROLLMENTS_CHECK_URL + "?unique_id=" + uniqueId + "&account_id=" + accountId);
+            HttpGet httpGet = httpConnectionClient.createGetRequest(Constants.ENROLLMENTS_CHECK_URL + "?unique_id=" + uniqueId + "&account_id=" + accountId);
             httpGet.addHeader("Authorization", "Bearer " + token);
             httpGet.addHeader("Accept", "application/json");
             CloseableHttpResponse response = httpclient.execute(httpGet);
             responseCode = response.getStatusLine().getStatusCode();
             sharedState.put(Constants.CUSTOMER_LOOKUP_RESPONSE_CODE, responseCode);
             logger.debug("journey customer look up api call response code is::" + responseCode);
-            System.out.println("journey customer look up api call response code is::" + responseCode);
             HttpEntity entityResponse = response.getEntity();
             String result = EntityUtils.toString(entityResponse);
             jsonResponse = new JSONObject(result);
             enrollments = populateJourneyCustomerDetails(context, jsonResponse);
-
         } catch (ConnectTimeoutException | SocketTimeoutException e) {
             logger.error(e.getMessage());
         } catch (Exception e) {

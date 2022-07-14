@@ -21,7 +21,12 @@ public class HttpConnectionClient {
     public CloseableHttpClient buildDefaultClient(TreeContext context) {
         logger.debug("requesting http client connection client open");
         JsonValue sharedState = context.sharedState;
-        Integer timeout = sharedState.get(Constants.REQUEST_TIMEOUT).asInteger();
+        Integer timeout;
+        if (sharedState.get(Constants.RETRIEVE_API_CONNECTION).isNotNull() && sharedState.get(Constants.RETRIEVE_API_CONNECTION).asBoolean()) {
+            timeout = sharedState.get(Constants.RETRIEVE_DELAY).asInteger() / 1000;
+        } else {
+            timeout = sharedState.get(Constants.REQUEST_TIMEOUT).asInteger();
+        }
         RequestConfig config = RequestConfig.custom().setConnectTimeout(timeout * 1000).setConnectionRequestTimeout(timeout * 1000).setSocketTimeout(timeout * 1000).build();
         HttpClientBuilder clientBuilder = HttpClientBuilder.create();
         return clientBuilder.setDefaultRequestConfig(config).build();
@@ -30,6 +35,7 @@ public class HttpConnectionClient {
     public HttpPost createPostRequest(String url) {
         return new HttpPost(url);
     }
+
     public HttpGet createGetRequest(String url) {
         return new HttpGet(url);
     }

@@ -22,6 +22,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +32,12 @@ public class CreateExecution {
     String pipelineKey, dashboardId = null, uniqueId, deviceId = null, forgeRockSessionId = null, apiAccessToken = null, phoneNumber = null,
             methodName = null, executionId = null;
     JSONObject delivery;
+    HttpConnectionClient httpConnectionClient;
+
+    @Inject
+    public CreateExecution(HttpConnectionClient httpConnectionClient) {
+        this.httpConnectionClient = httpConnectionClient;
+    }
 
     public String execute(TreeContext context) throws NodeProcessException {
         initializeVariables(context);
@@ -108,8 +115,7 @@ public class CreateExecution {
         ArrayList<String> urls;
         JSONArray callbackUrls;
         Integer responseCode;
-        HttpConnectionClient connection = new HttpConnectionClient();
-        try (CloseableHttpClient httpclient = connection.getHttpClient(context)) {
+        try (CloseableHttpClient httpclient = httpConnectionClient.getHttpClient(context)) {
             jsonObj = new JSONObject();
             jsonObj.put("pipelineKey", pipelineKey);
             jsonObj.put("delivery", delivery);
@@ -132,7 +138,7 @@ public class CreateExecution {
                 session.put("id", customerJourneyId);
             }
             jsonObj.put("session", session);
-            httpPost = connection.createPostRequest(Constants.CREATE_EXECUTION_URL);
+            httpPost = httpConnectionClient.createPostRequest(Constants.CREATE_EXECUTION_URL);
             httpPost.addHeader("Accept", "application/json");
             httpPost.addHeader("Authorization", "Bearer " + apiAccessToken);
             httpPost.addHeader("Content-Type", "application/json");
@@ -141,7 +147,6 @@ public class CreateExecution {
             response = httpclient.execute(httpPost);
             responseCode = response.getStatusLine().getStatusCode();
             logger.debug("create execution response code: " + responseCode);
-            System.out.println("create execution response code: " + responseCode);
             entityResponse = response.getEntity();
             result = EntityUtils.toString(entityResponse);
             jsonResponse = new JSONObject(result);

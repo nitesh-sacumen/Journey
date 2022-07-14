@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.forgerock.openam.auth.node.api.Action.send;
+
 @Node.Metadata(outcomeProvider = SingleOutcomeNode.OutcomeProvider.class, configClass =
         ErrorMessageNode.Config.class)
 public class ErrorMessageNode extends SingleOutcomeNode {

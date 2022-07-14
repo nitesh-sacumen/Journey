@@ -22,37 +22,42 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
 public class UserDetails {
     private final static Logger logger = LoggerFactory.getLogger(UserDetails.class);
     String hostUrl, cookieName = null, universalId, sessionId;
+    HttpConnectionClient httpConnectionClient;
+
+    @Inject
+    public UserDetails(HttpConnectionClient httpConnectionClient) {
+        this.httpConnectionClient = httpConnectionClient;
+    }
 
     public Boolean getDetails(TreeContext context, String tokenId, String groupName, String username) throws NodeProcessException {
         JsonValue sharedState = context.sharedState;
         hostUrl = sharedState.get(Constants.FORGEROCK_HOST_URL).asString();
         getForgerockCookieName(context);
-        Boolean isAdmin = false;
+        Boolean result = false;
         if (cookieName != null) {
             getForgerockSessionId(context, tokenId);
-            isAdmin = getForgerockGroupDetails(context, tokenId, username, groupName);
+            result = getForgerockGroupDetails(context, tokenId, username, groupName);
         }
-        return isAdmin;
+        return result;
     }
 
     private void getForgerockCookieName(TreeContext context) throws NodeProcessException {
         JsonValue sharedState = context.sharedState;
-        HttpConnectionClient connection = new HttpConnectionClient();
-        try (CloseableHttpClient httpClient = connection.getHttpClient(context)) {
-            HttpGet httpGet = connection.createGetRequest(hostUrl + Constants.FORGEROCK_GET_SERVER_INFO_URL);
+        try (CloseableHttpClient httpClient = httpConnectionClient.getHttpClient(context)) {
+            HttpGet httpGet = httpConnectionClient.createGetRequest(hostUrl + Constants.FORGEROCK_GET_SERVER_INFO_URL);
             httpGet.addHeader("Accept", "application/json");
             httpGet.addHeader("Content-Type", "application/json");
             httpGet.addHeader("Accept-API-Version", "protocol=1.0,resource=1.1");
             CloseableHttpResponse httpResponse = httpClient.execute(httpGet);
             Integer responseCode = httpResponse.getStatusLine().getStatusCode();
             logger.debug("get forgerock cookie name api response code is:: " + responseCode);
-            System.out.println("get forgerock cookie name api response code is:: " + responseCode);
             HttpEntity entity = httpResponse.getEntity();
             if (entity != null) {
                 String result = EntityUtils.toString(entity);
@@ -83,7 +88,6 @@ public class UserDetails {
             CloseableHttpResponse httpResponse = httpClient.execute(httpPost);
             Integer responseCode = httpResponse.getStatusLine().getStatusCode();
             logger.debug("get forgerock session details api response code is:: " + responseCode);
-            System.out.println("get forgerock session details api response code is:: " + responseCode);
             HttpEntity entity = httpResponse.getEntity();
             if (entity != null) {
                 String result = EntityUtils.toString(entity);
@@ -110,6 +114,7 @@ public class UserDetails {
     }
 
     private Boolean getForgerockGroupDetails(TreeContext context, String tokenId, String username, String groupName) throws NodeProcessException {
+        JsonValue sharedState = context.sharedState;
         JSONArray adminMemberList;
         HttpConnectionClient connection = new HttpConnectionClient();
         try (CloseableHttpClient httpClient = connection.getHttpClient(context)) {
@@ -120,10 +125,9 @@ public class UserDetails {
             CloseableHttpResponse httpResponse = httpClient.execute(httpGet);
             Integer responseCode = httpResponse.getStatusLine().getStatusCode();
             logger.debug("get forgerock group details api response code is:: " + responseCode);
-            System.out.println("get forgerock group details api response code is:: " + responseCode);
             if (responseCode == 404) {
                 logger.debug("forgerock group cannot be found");
-                throw new NodeProcessException("forgerock group cannot be found");
+                return false;
             }
             HttpEntity entity = httpResponse.getEntity();
             if (entity != null) {
@@ -136,6 +140,7 @@ public class UserDetails {
                         logger.debug("group member list fetched");
                         for (Integer i = 0; i < adminMemberList.length(); i++) {
                             if (adminMemberList.get(i).equals(username)) {
+                                sharedState.put(Constants.IS_ADMIN, true);
                                 return true;
                             }
                         }
@@ -146,8 +151,8 @@ public class UserDetails {
             logger.error(e.getMessage());
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
-            throw new NodeProcessException("Exception is: " + e);
         }
-        return false;
+        sharedState.put(Constants.IS_ADMIN, false);
+        return true;
     }
 }

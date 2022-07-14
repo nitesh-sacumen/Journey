@@ -20,6 +20,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.net.SocketTimeoutException;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
@@ -33,6 +34,12 @@ public class RetrieveExecution {
     Boolean isCompleted = false;
     Boolean isFailed = false;
     Integer responseCode;
+    HttpConnectionClient httpConnectionClient;
+
+    @Inject
+    public RetrieveExecution(HttpConnectionClient httpConnectionClient) {
+        this.httpConnectionClient = httpConnectionClient;
+    }
 
     public String retrieve(TreeContext context, String executionId) throws NodeProcessException {
         JsonValue sharedState = context.sharedState;
@@ -42,6 +49,7 @@ public class RetrieveExecution {
         Integer retrieveTimeout = sharedState.get(Constants.RETRIEVE_TIMEOUT).asInteger();
         Integer retrieveDelay = sharedState.get(Constants.RETRIEVE_DELAY).asInteger();
         Boolean flag;
+        sharedState.put(Constants.RETRIEVE_API_CONNECTION, true);
         try {
             Thread.sleep(3000);
         } catch (Exception e) {
@@ -59,7 +67,7 @@ public class RetrieveExecution {
                 logger.error(Arrays.toString(e.getStackTrace()));
             }
         }
-
+        sharedState.put(Constants.RETRIEVE_API_CONNECTION, false);
         if (isCompleted) {
             return Constants.EXECUTION_COMPLETED;
         } else if (isFailed) {
@@ -67,19 +75,16 @@ public class RetrieveExecution {
         } else {
             return Constants.EXECUTION_TIMEOUT;
         }
-
     }
 
     private Boolean checkExecutionResult(TreeContext context, String executionId) throws NodeProcessException {
-        HttpConnectionClient connection = new HttpConnectionClient();
-        HttpGet httpGet = connection.createGetRequest(Constants.EXECUTION_RETRIEVE + executionId);
+        HttpGet httpGet = httpConnectionClient.createGetRequest(Constants.EXECUTION_RETRIEVE + executionId);
         httpGet.addHeader("Authorization", "Bearer " + apiAccessToken);
         httpGet.addHeader("Accept", "application/json");
-        try (CloseableHttpClient httpclient = connection.getHttpClient(context)) {
+        try (CloseableHttpClient httpclient = httpConnectionClient.getHttpClient(context)) {
             CloseableHttpResponse response = httpclient.execute(httpGet);
             responseCode = response.getStatusLine().getStatusCode();
             logger.debug("execution retrieve api response code is: " + responseCode);
-            System.out.println("execution retrieve api response code is: " + responseCode);
             HttpEntity entityResponse = response.getEntity();
             result = EntityUtils.toString(entityResponse);
             if (result != null) {

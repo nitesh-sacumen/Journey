@@ -53,29 +53,29 @@ public class OutcomeNode implements Node {
      */
     private Action collectRegField(TreeContext context) {
         JsonValue sharedState = context.sharedState;
-        String executionStatus;
+        String executionStatus = "";
         if (sharedState.get(Constants.EXECUTION_STATUS).isNotNull()) {
             executionStatus = sharedState.get(Constants.EXECUTION_STATUS).asString();
-            String type = sharedState.get(Constants.TYPE).asString();
-            if (Objects.equals(executionStatus, Constants.EXECUTION_COMPLETED)) {
-                cbList.add(getTextOutputCallbackObject(type + " Complete"));
-                cbList.add(getTextOutputCallbackObject("Thank you!"));
-                cbList.add(getTextOutputCallbackObject("Your " + type + " is complete."));
-                return send(ImmutableList.copyOf(cbList)).build();
-            } else if (Objects.equals(executionStatus, Constants.EXECUTION_FAILED)) {
-                cbList.add(getTextOutputCallbackObject(type + " Failed"));
-                cbList.add(getTextOutputCallbackObject("Oops, Your " + type + " has Failed."));
-                return send(ImmutableList.copyOf(cbList)).build();
-            } else if (Objects.equals(executionStatus, Constants.EXECUTION_TIMEOUT)) {
-                cbList.add(getTextOutputCallbackObject("Your " + type + " has a timeout."));
-                cbList.add(getTextOutputCallbackObject("Try again!"));
-                String[] choices = {"Retry"};
-                cbList.add(new ConfirmationCallback(0, choices, 0));
-                return send(ImmutableList.copyOf(cbList)).build();
-            }
         }
-        logger.debug("no execution status found");
-        return null;
+        String type = "";
+        if (sharedState.get(Constants.TYPE).isNotNull()) {
+            type = sharedState.get(Constants.TYPE).asString();
+        }
+        if (executionStatus.equals(Constants.EXECUTION_COMPLETED)) {
+            ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f2(type, true));
+            cbList.add(scriptTextOutputCallback);
+            return send(ImmutableList.copyOf(cbList)).build();
+        } else if (executionStatus.equals(Constants.EXECUTION_TIMEOUT)) {
+            cbList.add(getTextOutputCallbackObject("Your " + type + " has a timeout."));
+            cbList.add(getTextOutputCallbackObject("Try again!"));
+            String[] choices = {"Retry"};
+            cbList.add(new ConfirmationCallback(0, choices, 0));
+            return send(ImmutableList.copyOf(cbList)).build();
+        } else {
+            ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f2(type, false));
+            cbList.add(scriptTextOutputCallback);
+            return send(ImmutableList.copyOf(cbList)).build();
+        }
     }
 
     /**
@@ -103,11 +103,23 @@ public class OutcomeNode implements Node {
      * This function will create return a javascript based script .
      */
     String f1() {
-        return "if (document.contains(document.getElementById('waitHeader'))) {\n" +
-                "document.getElementById('waitHeader').remove();\n" +
-                "}\n" +
-                "document.getElementById('loginButton_0').style.display='none';\n" +
-                "document.getElementById('loginButton_0').click();\n";
+        return "if (document.contains(document.getElementById('waitHeader'))) {\n" + "document.getElementById('waitHeader').remove();\n" + "}\n" + "document.getElementById('loginButton_0').style.display='none';\n" + "document.getElementById('loginButton_0').click();\n";
+    }
+
+    String f2(String type, Boolean flag) {
+        return "document.getElementById('loginButton_0').style.display='none';\n" +
+                "var div=document.createElement('div');\r\n" +
+                "div.style.textAlign='center';\r\n" +
+                "div.id='outcomeDiv';\r\n" + "if(" + flag + "){\r\n" +
+                "var header=document.createElement('h4');\r\n" +
+                "header.innerHTML='Hey! Your " + type +
+                " successfully completed.';\r\n" +
+                "}\r\n" +
+                "else{\r\n" +
+                "var header=document.createElement('h4');\r\n" +
+                "header.innerHTML='Oops! Your " + type + " has failed.';\r\n" +
+                "}\r\n" + "div.appendChild(header);\r\n" +
+                "document.body.appendChild(div);\r\n";
     }
 
     private Action checkExecutionStatus(TreeContext context) {
@@ -115,12 +127,11 @@ public class OutcomeNode implements Node {
         String executionStatus = sharedState.get(Constants.EXECUTION_STATUS).asString();
         if (Objects.equals(executionStatus, Constants.EXECUTION_COMPLETED)) {
             return goTo(Outcome.Success).replaceSharedState(sharedState).build();
-        } else if (Objects.equals(executionStatus, Constants.EXECUTION_FAILED)) {
-            return goTo(Outcome.Failure).replaceSharedState(sharedState).build();
         } else if (Objects.equals(executionStatus, Constants.EXECUTION_TIMEOUT)) {
             return goTo(Outcome.Timeout).replaceSharedState(sharedState).build();
+        } else {
+            return goTo(Outcome.Failure).replaceSharedState(sharedState).build();
         }
-        return null;
     }
 
     /**
@@ -131,7 +142,6 @@ public class OutcomeNode implements Node {
         return new TextOutputCallback(0, msg);
     }
 
-
     private Action.ActionBuilder goTo(Outcome outcome) {
         return Action.goTo(outcome.name());
     }
@@ -140,10 +150,7 @@ public class OutcomeNode implements Node {
      * The possible outcomes for the JourneyPipeline.
      */
     public enum Outcome {
-        Success,
-        Failure,
-        Timeout
-
+        Success, Failure, Timeout
     }
 
     /**
