@@ -56,4 +56,6 @@ public final class Constants {
     public static final String FORGEROCK_HOST_URL = "forgerock_host_url";
     public static final String EXECUTION_STATUS = "execution_status";
     public static final String RETRIEVE_API_CONNECTION = "retrieve_api_connection";
+    public static final String EXECUTION_ID = "execution_id";
+    public static final String TIME_TO_LIVE = "time_to_live";
 }

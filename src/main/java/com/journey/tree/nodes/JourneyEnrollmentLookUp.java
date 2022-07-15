@@ -136,7 +136,6 @@ public class JourneyEnrollmentLookUp implements Node {
         logger.debug("*********************JourneyEnrollmentLookUp node********************");
         JsonValue sharedState = context.sharedState;
         Action action;
-        sharedState.put(Constants.REQUEST_TIMEOUT, config.requestTimeout());
         String username = sharedState.get(USERNAME).asString();
         Integer counter = setCounterValue(context);
         String uniqueIdentifier = config.uniqueIdentifier();
@@ -164,7 +163,7 @@ public class JourneyEnrollmentLookUp implements Node {
             String tokenId = sharedState.get(Constants.TOKEN_ID).asString();
             String groupName = config.groupName();
             String accountId = config.accountId();
-            timeToLive = config.timeToLive();
+            timeToLive = sharedState.get(Constants.TIME_TO_LIVE).asInteger();
             sharedState.put(Constants.ACCOUNT_ID, accountId);
             Boolean result = userDetails.getDetails(context, tokenId, groupName, username);
             if (!result) {
@@ -244,7 +243,7 @@ public class JourneyEnrollmentLookUp implements Node {
 
     private Action checkUniqueIdentifier(String uniqueIdentifier, TreeContext context, String username) {
         JsonValue sharedState = context.sharedState;
-        if (uniqueIdentifier.equalsIgnoreCase(Constants.UNIQUE_IDENTIFIER_USERNAME)) {
+        if (uniqueIdentifier == null || uniqueIdentifier.equalsIgnoreCase(Constants.UNIQUE_IDENTIFIER_USERNAME)) {
             sharedState.put(Constants.UNIQUE_ID, username);
         } else if (uniqueIdentifier.equalsIgnoreCase(Constants.UNIQUE_IDENTIFIER_EMAIL)) {
             if (sharedState.get(Constants.FORGEROCK_EMAIL).isNotNull()) {
@@ -261,12 +260,13 @@ public class JourneyEnrollmentLookUp implements Node {
                 return goTo(Outcome.Message).replaceSharedState(sharedState).build();
             }
         } else {
-            sharedState.put(Constants.UNIQUE_ID, username);
+            sharedState.put(Constants.ERROR_MESSAGE, "Invalid unique identifier provided");
+            return goTo(Outcome.Message).replaceSharedState(sharedState).build();
         }
         return null;
     }
 
-    private Integer setCounterValue(TreeContext context) {
+    public static Integer setCounterValue(TreeContext context) {
         Integer counter;
         JsonValue sharedState = context.sharedState;
         if (sharedState.get(Constants.COUNTER).isNull()) {
@@ -295,16 +295,23 @@ public class JourneyEnrollmentLookUp implements Node {
 
     private Action checkRequiredValues(TreeContext context) {
         JsonValue sharedState = context.sharedState;
-        if (config.refreshToken().equals("") || config.accountId().equals("") || config.uniqueIdentifier().equals("") ||
-                config.adminUsername().equals("") || config.adminPassword().equals("") || config.groupName().equals("") ||
-                config.forgerockHostUrl().equals("")) {
-            logger.error("Please configure refresh token/account id/unique identifier/adminUsername/adminPassword/groupName/ForgeRock Host URL to proceed");
-            sharedState.put(Constants.ERROR_MESSAGE, "Please configure refresh token/account id/unique identifier/adminUsername/adminPassword/groupName/ForgeRock Host URL to proceed");
+        Integer retrieveTimeout = config.retrieveTimeout() == null || (config.retrieveTimeout() != null && String.valueOf(config.retrieveTimeout()).isBlank()) ? 0 : Math.abs(config.retrieveTimeout());
+        Integer retrieveDelay = config.retrieveDelay() == null || (config.retrieveDelay() != null && String.valueOf(config.retrieveDelay()).isBlank()) ? 0 : Math.abs(config.retrieveDelay());
+        Integer requestTimeout = config.requestTimeout() == null || (config.requestTimeout() != null && String.valueOf(config.requestTimeout()).isBlank()) ? 0 : Math.abs(config.requestTimeout());
+        Integer timeToLive = config.timeToLive() == null || (config.timeToLive() != null && String.valueOf(config.timeToLive()).isBlank()) ? 0 : Math.abs(config.timeToLive());
+        if (config.refreshToken() == null || config.accountId() == null || config.uniqueIdentifier() == null ||
+                config.adminUsername() == null || config.adminPassword() == null || config.groupName() == null ||
+                config.forgerockHostUrl() == null || retrieveTimeout == 0 || retrieveDelay == 0 || requestTimeout == 0 || timeToLive == 0) {
+            logger.error("Please configure refresh token/account id/unique identifier/adminUsername/adminPassword/groupName/ForgeRock Host URL/retrieveTimeout/retrieveDelay/requestTimeout/timeToLive to proceed");
+            sharedState.put(Constants.ERROR_MESSAGE, "Please configure refresh token/account id/unique identifier/adminUsername/adminPassword/groupName/ForgeRock Host URL/retrieveTimeout/retrieveDelay/requestTimeout/timeToLive to proceed");
             return goTo(JourneyEnrollmentLookUp.Outcome.Message).replaceSharedState(sharedState).build();
         }
-        sharedState.put(Constants.RETRIEVE_TIMEOUT, config.retrieveTimeout());
-        sharedState.put(Constants.RETRIEVE_DELAY, config.retrieveDelay());
+        sharedState.put(Constants.RETRIEVE_TIMEOUT, retrieveTimeout);
+        sharedState.put(Constants.RETRIEVE_DELAY, retrieveDelay);
         sharedState.put(Constants.REFRESH_TOKEN, config.refreshToken());
+        sharedState.put(Constants.REQUEST_TIMEOUT, requestTimeout);
+        sharedState.put(Constants.TIME_TO_LIVE, timeToLive);
+
         return null;
     }
 
@@ -313,7 +320,7 @@ public class JourneyEnrollmentLookUp implements Node {
         sharedState.put(Constants.FORGEROCK_HOST_URL, config.forgerockHostUrl());
         Boolean flag = ForgerockUser.getDetails(username, coreWrapper, context);
         if (!flag) {
-            sharedState.put(Constants.ERROR_MESSAGE, "Invalid forgerock username/ minimum length should be 8 characters");
+            sharedState.put(Constants.ERROR_MESSAGE, "Invalid forgerock username");
             return goTo(JourneyEnrollmentLookUp.Outcome.Message).replaceSharedState(sharedState).build();
         }
         String adminUsername = config.adminUsername();

@@ -89,6 +89,11 @@ public class RetrieveExecution {
             result = EntityUtils.toString(entityResponse);
             if (result != null) {
                 JSONObject jsonResponse = new JSONObject(result);
+                if (jsonResponse.has("errors")) {
+                    JSONObject errorObj = (JSONObject) jsonResponse.get("errors");
+                    logger.debug(errorObj.toString());
+                    throw new NodeProcessException("Api responded with errors, please check logs for errors.");
+                }
                 if (jsonResponse.has("completedAt") || jsonResponse.has("failedAt")) {
                     Boolean flag;
                     String date;
@@ -125,7 +130,6 @@ public class RetrieveExecution {
             return true;
         } catch (DateTimeParseException e) {
             logger.error(Arrays.toString(e.getStackTrace()));
-            e.printStackTrace();
         }
         return false;
     }

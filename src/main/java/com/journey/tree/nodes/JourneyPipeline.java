@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 
+import static com.journey.tree.nodes.JourneyEnrollmentLookUp.setCounterValue;
 import static org.forgerock.openam.auth.node.api.Action.send;
 
 @Node.Metadata(outcomeProvider = JourneyPipeline.OutcomeProvider.class, configClass = JourneyPipeline.Config.class)
@@ -78,58 +79,65 @@ public class JourneyPipeline implements Node {
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
         logger.debug("*********************JourneyPipeline node********************");
-        if (config.pipelineKey().equals("")) {
+        if (config.pipelineKey() == null) {
             logger.error("please provide pipeline key to proceed");
             throw new NodeProcessException("please provide pipeline key to proceed");
         }
         JsonValue sharedState = context.sharedState;
+        Integer counter = setCounterValue(context);
+        String executionId;
         try {
-
-            if (!context.hasCallbacks()) {
+            if (counter == 1) {
+                sharedState.put(Constants.PIPELINE_KEY, config.pipelineKey());
+                if (config.dashboardId() != null) {
+                    sharedState.put(Constants.DASHBOARD_ID, config.dashboardId());
+                }
+                executionId = createExecution.execute(context);
+                sharedState.put(Constants.EXECUTION_ID, executionId);
                 List<Callback> cbList = new ArrayList<>();
-                ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1(sharedState.get(Constants.TYPE).asString()));
+                ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1());
+                cbList.add(scriptTextOutputCallback);
+                return send(ImmutableList.copyOf(cbList)).build();
+            } else if (counter == 2) {
+                List<Callback> cbList = new ArrayList<>();
+                ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f2(sharedState.get(Constants.TYPE).asString()));
                 cbList.add(scriptTextOutputCallback);
                 return send(ImmutableList.copyOf(cbList)).build();
             }
-            sharedState.put(Constants.PIPELINE_KEY, config.pipelineKey());
-            if (!config.dashboardId().equals("")) {
-                sharedState.put(Constants.DASHBOARD_ID, config.dashboardId());
-            }
-            String executionId = createExecution.execute(context);
+            sharedState.put(Constants.COUNTER, null);
             String type;
             type = sharedState.get(Constants.TYPE).asString();
             String executionStatus;
-            if (executionId != null) {
-                executionStatus = retrieveExecution.retrieve(context, executionId);
-                if (executionStatus == Constants.EXECUTION_COMPLETED) {
-                    logger.debug(type + " with id " + executionId + " successfully completed");
-                    sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_COMPLETED);
-                    return goTo(Outcome.Successful).replaceSharedState(sharedState).build();
-                } else if (executionStatus == Constants.EXECUTION_FAILED) {
-                    logger.debug(type + " with id " + executionId + " failed");
-                    sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_FAILED);
-                    return goTo(Outcome.Error).replaceSharedState(sharedState).build();
-                } else {
-                    logger.debug(type + " with id " + executionId + " has a timeout");
-                    sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_TIMEOUT);
-                    return goTo(Outcome.Timeout).replaceSharedState(sharedState).build();
-                }
+            executionId = sharedState.get(Constants.EXECUTION_ID).asString();
+            executionStatus = retrieveExecution.retrieve(context, executionId);
+            if (executionStatus.equals(Constants.EXECUTION_COMPLETED)) {
+                logger.debug(type + " with id " + executionId + " successfully completed");
+                sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_COMPLETED);
+                return goTo(Outcome.Successful).replaceSharedState(sharedState).build();
+            } else if (executionStatus.equals(Constants.EXECUTION_FAILED)) {
+                logger.debug(type + " with id " + executionId + " failed");
+                sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_FAILED);
+                return goTo(Outcome.Error).replaceSharedState(sharedState).build();
             } else {
-                logger.debug("execution id not created/timeout");
+                logger.debug(type + " with id " + executionId + " has a timeout");
                 sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_TIMEOUT);
                 return goTo(Outcome.Timeout).replaceSharedState(sharedState).build();
             }
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
-            e.printStackTrace();
             throw new NodeProcessException("Exception is: ", e);
         }
+    }
+
+    String f1() {
+        return "document.getElementById('loginButton_0').style.display = 'none';\r\n" +
+                "document.getElementById('loginButton_0').click();\r\n";
     }
 
     /**
      * This function will create return a javascript based script .
      */
-    String f1(String type) {
+    String f2(String type) {
         return "document.getElementById('loginButton_0').style.display = 'none';\r\n" +
                 "var header = document.createElement('h3');\r\n" +
                 "header.id='waitHeader';\r\n" +

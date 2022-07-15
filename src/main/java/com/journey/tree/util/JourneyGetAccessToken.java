@@ -54,6 +54,11 @@ public class JourneyGetAccessToken {
             HttpEntity entityResponse = response.getEntity();
             String result = EntityUtils.toString(entityResponse);
             jsonResponse = new JSONObject(result);
+            if (jsonResponse.has("errors")) {
+                JSONObject errorObj = (JSONObject) jsonResponse.get("errors");
+                logger.debug(errorObj.toString());
+                throw new NodeProcessException("Api responded with errors, please check logs for errors.");
+            }
         } catch (ConnectTimeoutException | SocketTimeoutException e) {
             logger.error(e.getMessage());
         } catch (Exception e) {
