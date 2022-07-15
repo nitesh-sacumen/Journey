@@ -109,6 +109,7 @@ public class JourneyEnrollmentLookUp implements Node {
         default Integer requestTimeout() {
             return 0;
         }
+
     }
 
     /**
@@ -302,6 +303,7 @@ public class JourneyEnrollmentLookUp implements Node {
         if (config.refreshToken() == null || config.accountId() == null || config.uniqueIdentifier() == null ||
                 config.adminUsername() == null || config.adminPassword() == null || config.groupName() == null ||
                 config.forgerockHostUrl() == null || retrieveTimeout == 0 || retrieveDelay == 0 || requestTimeout == 0 || timeToLive == 0) {
+            sharedState.put(Constants.COUNTER, null);
             logger.error("Please configure refresh token/account id/unique identifier/adminUsername/adminPassword/groupName/ForgeRock Host URL/retrieveTimeout/retrieveDelay/requestTimeout/timeToLive to proceed");
             sharedState.put(Constants.ERROR_MESSAGE, "Please configure refresh token/account id/unique identifier/adminUsername/adminPassword/groupName/ForgeRock Host URL/retrieveTimeout/retrieveDelay/requestTimeout/timeToLive to proceed");
             return goTo(JourneyEnrollmentLookUp.Outcome.Message).replaceSharedState(sharedState).build();
@@ -320,6 +322,7 @@ public class JourneyEnrollmentLookUp implements Node {
         sharedState.put(Constants.FORGEROCK_HOST_URL, config.forgerockHostUrl());
         Boolean flag = ForgerockUser.getDetails(username, coreWrapper, context);
         if (!flag) {
+            sharedState.put(Constants.COUNTER, null);
             sharedState.put(Constants.ERROR_MESSAGE, "Invalid forgerock username");
             return goTo(JourneyEnrollmentLookUp.Outcome.Message).replaceSharedState(sharedState).build();
         }
@@ -327,6 +330,7 @@ public class JourneyEnrollmentLookUp implements Node {
         String adminPassword = config.adminPassword();
         Boolean result = forgerockToken.createToken(adminUsername, adminPassword, context);
         if (!result) {
+            sharedState.put(Constants.COUNTER, null);
             sharedState.put(Constants.ERROR_MESSAGE, "Invalid forgerock admin username/password");
             return goTo(JourneyEnrollmentLookUp.Outcome.Message).replaceSharedState(sharedState).build();
         }

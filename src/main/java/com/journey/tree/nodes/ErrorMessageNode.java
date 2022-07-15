@@ -9,6 +9,7 @@ package com.journey.tree.nodes;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.assistedinject.Assisted;
 import com.journey.tree.config.Constants;
+import com.sun.identity.authentication.callbacks.ScriptTextOutputCallback;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.auth.node.api.*;
 import org.slf4j.Logger;
@@ -52,21 +53,17 @@ public class ErrorMessageNode extends SingleOutcomeNode {
      */
     @Override
     public Action process(TreeContext context) throws NodeProcessException {
-        logger.debug("*********************JourneyMessageNode node********************");
+        logger.debug("*********************ErrorMessageNode node********************");
         List<Callback> cbList = new ArrayList<>();
-        if (!context.hasCallbacks()) {
-            JsonValue sharedState = context.sharedState;
-            String errorMessage;
-            if (sharedState.get(Constants.ERROR_MESSAGE).isNotNull()) {
-                cbList.add(getTextOutputCallbackObject("Oops! There was an error in processing your request due to the following:"));
-                errorMessage = "** " + sharedState.get(Constants.ERROR_MESSAGE).asString();
-                cbList.add(getTextOutputCallbackObject(errorMessage));
-                cbList.add(getTextOutputCallbackObject("Please contact administrator"));
-            }
-            return send(ImmutableList.copyOf(cbList)).build();
-        }
-        logger.debug("Unexpected error occurred, please contact administrator");
-        throw new NodeProcessException("Unexpected error occurred, please contact administrator");
+        JsonValue sharedState = context.sharedState;
+        String errorMessage;
+        cbList.add(getTextOutputCallbackObject("Oops! There was an error in processing your request due to the following:"));
+        errorMessage = "** " + sharedState.get(Constants.ERROR_MESSAGE).asString();
+        cbList.add(getTextOutputCallbackObject(errorMessage));
+        cbList.add(getTextOutputCallbackObject("Please contact administrator"));
+        ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1());
+        cbList.add(scriptTextOutputCallback);
+        return send(ImmutableList.copyOf(cbList)).build();
     }
 
     /**
@@ -75,5 +72,10 @@ public class ErrorMessageNode extends SingleOutcomeNode {
      */
     private TextOutputCallback getTextOutputCallbackObject(String msg) {
         return new TextOutputCallback(0, msg);
+    }
+
+    String f1() {
+        return "alert('f1');\r\n" +
+                "document.getElementById('loginButton_0').style.display = 'none';\r\n";
     }
 }
