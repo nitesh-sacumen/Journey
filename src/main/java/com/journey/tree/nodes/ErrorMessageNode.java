@@ -55,15 +55,19 @@ public class ErrorMessageNode extends SingleOutcomeNode {
     public Action process(TreeContext context) throws NodeProcessException {
         logger.debug("*********************ErrorMessageNode node********************");
         List<Callback> cbList = new ArrayList<>();
-        JsonValue sharedState = context.sharedState;
-        String errorMessage;
-        cbList.add(getTextOutputCallbackObject("Oops! There was an error in processing your request due to the following:"));
-        errorMessage = "** " + sharedState.get(Constants.ERROR_MESSAGE).asString();
-        cbList.add(getTextOutputCallbackObject(errorMessage));
-        cbList.add(getTextOutputCallbackObject("Please contact administrator"));
-        ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1());
-        cbList.add(scriptTextOutputCallback);
-        return send(ImmutableList.copyOf(cbList)).build();
+        if (!context.hasCallbacks()) {
+            JsonValue sharedState = context.sharedState;
+            String errorMessage;
+            cbList.add(getTextOutputCallbackObject("Oops! There was an error in processing your request due to the following:"));
+            errorMessage = "** " + sharedState.get(Constants.ERROR_MESSAGE).asString();
+            cbList.add(getTextOutputCallbackObject(errorMessage));
+            cbList.add(getTextOutputCallbackObject("Please contact administrator"));
+            ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1());
+            cbList.add(scriptTextOutputCallback);
+            return send(ImmutableList.copyOf(cbList)).build();
+        }
+        logger.debug("Unexpected error occurred, please contact administrator");
+        throw new NodeProcessException("Unexpected error occurred, please contact administrator");
     }
 
     /**
@@ -75,7 +79,6 @@ public class ErrorMessageNode extends SingleOutcomeNode {
     }
 
     String f1() {
-        return "alert('f1');\r\n" +
-                "document.getElementById('loginButton_0').style.display = 'none';\r\n";
+        return "document.getElementById('loginButton_0').style.display = 'none';\r\n";
     }
 }

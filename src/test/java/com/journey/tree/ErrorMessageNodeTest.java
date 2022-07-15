@@ -38,33 +38,16 @@ public class ErrorMessageNodeTest {
         TreeContext treeContext = buildThreeContext(Collections.emptyList(),null);
         Action action = errorMessageNode.process(treeContext);
         List<Callback> callbacks = action.callbacks;
-        Assert.assertEquals(callbacks.size(),3);
+        Assert.assertEquals(callbacks.size(),4);
     }
 
-    @Test
-    public void testErrorMessageNodeWithCallback() throws NodeProcessException {
-        List<Callback> cbList = new ArrayList<>();
-
-        String[] submitButton = {"Call Support"};
-        cbList.add(new ConfirmationCallback(0, submitButton, 0));
-
-        TreeContext treeContext = buildThreeContext(cbList,null);
-
-        Exception exception = Assert.expectThrows(NodeProcessException.class, () -> {
-            errorMessageNode.process(treeContext);
-        });
-
-        String expectedMessage = "Unexpected error occurred, please contact administrator";
-        String actualMessage = exception.getMessage();
-        Assert.assertEquals(actualMessage,expectedMessage);
-    }
 
     @Test
     public void testErrorMessageNodeWithError() throws NodeProcessException {
         TreeContext treeContext = buildThreeContext(Collections.emptyList(),"Error while processing!!");
         Action action = errorMessageNode.process(treeContext);
         List<Callback> callbacks = action.callbacks;
-        Assert.assertEquals(callbacks.size(),3);
+        Assert.assertEquals(callbacks.size(),4);
     }
 
 
