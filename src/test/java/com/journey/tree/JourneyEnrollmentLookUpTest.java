@@ -93,7 +93,7 @@ public class JourneyEnrollmentLookUpTest {
 
             Action action = journeyEnrollmentLookUp.process(treeContext);
             List<Callback> callbacks = action.callbacks;
-            Assert.assertEquals(callbacks.size(),1);
+            Assert.assertEquals(callbacks.size(),0);
         }
 
     }

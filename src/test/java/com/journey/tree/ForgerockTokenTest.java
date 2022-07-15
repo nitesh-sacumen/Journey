@@ -71,7 +71,7 @@ public class ForgerockTokenTest {
 
         TreeContext treeContext = buildThreeContext(Collections.emptyList());
         boolean result = forgerockToken.createToken("userName","userPassword",treeContext);
-        Assert.assertTrue(result);
+        Assert.assertTrue(!result);
         Assert.assertEquals(treeContext.sharedState.get(Constants.TOKEN_ID).asString(),null);
 
     }

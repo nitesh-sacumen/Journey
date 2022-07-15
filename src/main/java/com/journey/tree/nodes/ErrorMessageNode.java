@@ -57,12 +57,10 @@ public class ErrorMessageNode extends SingleOutcomeNode {
         if (!context.hasCallbacks()) {
             JsonValue sharedState = context.sharedState;
             String errorMessage;
-            if (sharedState.get(Constants.ERROR_MESSAGE).isNotNull()) {
-                cbList.add(getTextOutputCallbackObject("Oops! There was an error in processing your request due to the following:"));
-                errorMessage = "** " + sharedState.get(Constants.ERROR_MESSAGE).asString();
-                cbList.add(getTextOutputCallbackObject(errorMessage));
-                cbList.add(getTextOutputCallbackObject("Please contact administrator"));
-            }
+            cbList.add(getTextOutputCallbackObject("Oops! There was an error in processing your request due to the following:"));
+            errorMessage = "** " + sharedState.get(Constants.ERROR_MESSAGE).asString();
+            cbList.add(getTextOutputCallbackObject(errorMessage));
+            cbList.add(getTextOutputCallbackObject("Please contact administrator"));
             return send(ImmutableList.copyOf(cbList)).build();
         }
         logger.debug("Unexpected error occurred, please contact administrator");
