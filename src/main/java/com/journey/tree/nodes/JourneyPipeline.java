@@ -12,6 +12,7 @@ import com.google.inject.assistedinject.Assisted;
 import com.journey.tree.config.Constants;
 import com.journey.tree.util.CreateExecution;
 import com.journey.tree.util.RetrieveExecution;
+import com.sun.identity.authentication.callbacks.HiddenValueCallback;
 import com.sun.identity.authentication.callbacks.ScriptTextOutputCallback;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.annotations.sm.Attribute;
@@ -95,9 +96,15 @@ public class JourneyPipeline implements Node {
                 executionId = createExecution.execute(context);
                 sharedState.put(Constants.EXECUTION_ID, executionId);
                 List<Callback> cbList = new ArrayList<>();
-                ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1());
-                cbList.add(scriptTextOutputCallback);
+                if (executionId != null) {
+                    ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1());
+                    cbList.add(scriptTextOutputCallback);
+                } else {
+                   throw new NodeProcessException("Execution id not created");
+                }
+
                 return send(ImmutableList.copyOf(cbList)).build();
+
             } else if (counter == 2) {
                 List<Callback> cbList = new ArrayList<>();
                 ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f2(sharedState.get(Constants.TYPE).asString()));

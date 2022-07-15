@@ -70,37 +70,30 @@ public class CreateExecution {
         }
     }
 
-    private void prepareDeliveryObject(TreeContext context) {
+    private void prepareDeliveryObject(TreeContext context) throws NodeProcessException {
         JsonValue sharedState = context.sharedState;
         delivery = new JSONObject();
         try {
             if (methodName.equalsIgnoreCase(Constants.FACIAL_BIOMETRIC)) {
-                if (phoneNumber == null) {
-                    if (sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).isNotNull()) {
-                        phoneNumber = sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).asString();
-                    } else {
-                        logger.debug("phone number is not available");
-                        throw new NodeProcessException("phone number is not available");
-                    }
+                if (sharedState.get(Constants.JOURNEY_PHONE_NUMBER).isNotNull() ||
+                        sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).isNotNull()) {
+                    String phoneNumber = sharedState.get(Constants.JOURNEY_PHONE_NUMBER).isNotNull() ?
+                            sharedState.get(Constants.JOURNEY_PHONE_NUMBER).asString() : sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).asString();
+                    delivery.put("method", "sms");
+                    delivery.put("phoneNumber", phoneNumber);
+                } else {
+                    String email = sharedState.get(Constants.JOURNEY_EMAIL).isNotNull() ?
+                            sharedState.get(Constants.JOURNEY_EMAIL).asString() : sharedState.get(Constants.FORGEROCK_EMAIL).asString();
+                    delivery.put("method", "email");
+                    delivery.put("email", email);
                 }
-                String email = null;
-                if (sharedState.get(Constants.JOURNEY_EMAIL).isNotNull()) {
-                    email = sharedState.get(Constants.JOURNEY_EMAIL).asString();
-                } else if (sharedState.get(Constants.FORGEROCK_EMAIL).isNotNull()) {
-                    email = sharedState.get(Constants.FORGEROCK_EMAIL).asString();
-                }
-                //hard coded for testing purpose
-                delivery.put("method", "email");
-                delivery.put("email", email);
-            } else if (methodName.equalsIgnoreCase(Constants.MOBILE_APP) && deviceId != null) {
+            } else {
                 delivery.put("method", "push-notification");
                 delivery.put("deviceId", deviceId);
-            } else {
-                logger.debug("no device id found");
-                throw new NodeProcessException("no device id found");
             }
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
+            throw new NodeProcessException("Exception is:" + e);
         }
     }
 

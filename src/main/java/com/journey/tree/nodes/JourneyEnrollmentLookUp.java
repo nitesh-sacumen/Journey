@@ -219,8 +219,12 @@ public class JourneyEnrollmentLookUp implements Node {
                         }
                     }
                 }
-                if ((sharedState.get(Constants.METHOD_NAME).asString() == Constants.FACIAL_BIOMETRIC) && (sharedState.get(Constants.JOURNEY_PHONE_NUMBER).isNull() && sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).isNull())) {
-                    sharedState.put(Constants.ERROR_MESSAGE, "User phone number is required to proceed");
+                if ((sharedState.get(Constants.METHOD_NAME).asString() == Constants.FACIAL_BIOMETRIC) &&
+                        sharedState.get(Constants.JOURNEY_PHONE_NUMBER).isNull() &&
+                        sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).isNull() &&
+                        sharedState.get(Constants.JOURNEY_EMAIL).isNull() &&
+                        sharedState.get(Constants.FORGEROCK_EMAIL).isNull()) {
+                    sharedState.put(Constants.ERROR_MESSAGE, "User phone number/email is required to proceed");
                     return goTo(Outcome.Message).replaceSharedState(sharedState).build();
                 } else if ((sharedState.get(Constants.METHOD_NAME).asString() == Constants.MOBILE_APP) && sharedState.get(Constants.DEVICE_ID).isNull()) {
                     sharedState.put(Constants.ERROR_MESSAGE, "Mobile device id is required to proceed");
@@ -331,7 +335,7 @@ public class JourneyEnrollmentLookUp implements Node {
         Boolean result = forgerockToken.createToken(adminUsername, adminPassword, context);
         if (!result) {
             sharedState.put(Constants.COUNTER, null);
-            sharedState.put(Constants.ERROR_MESSAGE, "Invalid forgerock admin username/password");
+            sharedState.put(Constants.ERROR_MESSAGE, "Invalid forgerock admin username/password/host url");
             return goTo(JourneyEnrollmentLookUp.Outcome.Message).replaceSharedState(sharedState).build();
         }
         List<Callback> cbList = new ArrayList<>();
