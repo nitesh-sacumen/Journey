@@ -56,6 +56,7 @@ public class ForgerockToken {
                     String tokenId = jsonResponse.getString("tokenId");
                     logger.debug("forgerock token created");
                     sharedState.put(Constants.TOKEN_ID, tokenId);
+                    return true;
                 }
             }
 
@@ -64,6 +65,6 @@ public class ForgerockToken {
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
         }
-        return true;
+        return false;
     }
 }

@@ -130,7 +130,6 @@ public class RetrieveExecution {
             return true;
         } catch (DateTimeParseException e) {
             logger.error(Arrays.toString(e.getStackTrace()));
-            e.printStackTrace();
         }
         return false;
     }

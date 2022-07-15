@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.security.auth.callback.Callback;
-import javax.security.auth.callback.ConfirmationCallback;
 import javax.security.auth.callback.TextOutputCallback;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,8 +63,6 @@ public class ErrorMessageNode extends SingleOutcomeNode {
                 cbList.add(getTextOutputCallbackObject(errorMessage));
                 cbList.add(getTextOutputCallbackObject("Please contact administrator"));
             }
-            String[] submitButton = {"Call Support"};
-            cbList.add(new ConfirmationCallback(0, submitButton, 0));
             return send(ImmutableList.copyOf(cbList)).build();
         }
         logger.debug("Unexpected error occurred, please contact administrator");
