@@ -38,7 +38,7 @@ public class ErrorMessageNodeTest {
         TreeContext treeContext = buildThreeContext(Collections.emptyList(),null);
         Action action = errorMessageNode.process(treeContext);
         List<Callback> callbacks = action.callbacks;
-        Assert.assertEquals(callbacks.size(),1);
+        Assert.assertEquals(callbacks.size(),3);
     }
 
     @Test
@@ -64,7 +64,7 @@ public class ErrorMessageNodeTest {
         TreeContext treeContext = buildThreeContext(Collections.emptyList(),"Error while processing!!");
         Action action = errorMessageNode.process(treeContext);
         List<Callback> callbacks = action.callbacks;
-        Assert.assertEquals(callbacks.size(),4);
+        Assert.assertEquals(callbacks.size(),3);
     }
 
 
