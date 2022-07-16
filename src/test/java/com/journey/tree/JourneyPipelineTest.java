@@ -69,6 +69,7 @@ public class JourneyPipelineTest {
         Mockito.when(config.pipelineKey()).thenReturn("test");
         Mockito.when(config.dashboardId()).thenReturn("");
         TreeContext treeContext = buildThreeContext(Collections.emptyList(),null);
+        Mockito.when(createExecution.execute(treeContext)).thenReturn("testId");
         Action action = journeyPipeline.process(treeContext);
         List<Callback> callbacks = action.callbacks;
         Assert.assertEquals(callbacks.size(),1);
