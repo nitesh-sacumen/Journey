@@ -1,3 +1,8 @@
+/**
+ * @author Sacumen(www.sacumen.com)
+ * This class will provide Http Client object that will be used to make api calls
+ */
+
 package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
