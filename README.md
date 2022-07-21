@@ -4,8 +4,8 @@
 
 ## Installation
 
-The Journey-Auth tree nodes are packaged as a jar file and the latest release can be download [here](https://github.com/Enzoic/forgerock/releases/latest).
- Once downloaded, copy the jar file to the ../web-container/webapps/openam/WEB-INF/lib
+The Journey-Auth tree nodes are packaged as a jar file and the latest release can be download [here](https://github.com/nitesh-sacumen/Journey).
+Once downloaded, copy the jar file to the ../web-container/webapps/openam/WEB-INF/lib
  
 ## Steps
 
@@ -56,6 +56,8 @@ Configuration is:
 * Forgerock Host Url
 
 * Request Timeout
+
+* Retrieve Delay
 
 ```
 
