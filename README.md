@@ -78,7 +78,7 @@ journey pipeline is initiating authentication/enrollment by calling execution cr
 
 Configuration is:
 ```js
-* Pipeline Kay : Key for Journey pipeline.
+* Pipeline Key : Key for Journey pipeline.
 
 * Dashboard ID : Dashboard ID
 ```
