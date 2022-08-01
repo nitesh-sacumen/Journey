@@ -72,10 +72,7 @@ public class JourneyNodePlugin extends AbstractNodeAmPlugin {
         return ImmutableMap.of(
                 JourneyNodePlugin.currentVersion, asList(
                         JourneyEnrollmentLookUp.class,
-                        LogicToDetermineMethod.class,
-                        JourneyPipeline.class,
-                        ErrorMessageNode.class,
-                        OutcomeNode.class
+                        JourneyPipeline.class
                 ));
     }
 

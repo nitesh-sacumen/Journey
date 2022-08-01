@@ -2,7 +2,6 @@ package com.journey.tree;
 
 import com.journey.tree.config.Constants;
 import com.journey.tree.nodes.JourneyPipeline;
-import com.journey.tree.nodes.LogicToDetermineMethod;
 import com.journey.tree.util.CreateExecution;
 import com.journey.tree.util.RetrieveExecution;
 import com.sun.identity.authentication.callbacks.ScriptTextOutputCallback;
@@ -42,7 +41,6 @@ public class JourneyPipelineTest {
     RetrieveExecution retrieveExecution;
 
 
-
     @BeforeMethod
     public void before() {
         initMocks(this);
@@ -50,29 +48,29 @@ public class JourneyPipelineTest {
 
     @Test
     public void testJourneyPipelineWithNullPipelineKey() throws NodeProcessException {
-        journeyPipeline = new JourneyPipeline(config,createExecution,retrieveExecution);
+        journeyPipeline = new JourneyPipeline(config, createExecution, retrieveExecution);
         Mockito.when(config.pipelineKey()).thenReturn(null);
-        TreeContext treeContext = buildThreeContext(Collections.emptyList(),null);
+        TreeContext treeContext = buildThreeContext(Collections.emptyList(), null);
         Exception exception = Assert.expectThrows(NodeProcessException.class, () -> {
             journeyPipeline.process(treeContext);
         });
 
         String expectedMessage = "please provide pipeline key to proceed";
         String actualMessage = exception.getMessage();
-        Assert.assertEquals(actualMessage,expectedMessage);
+        Assert.assertEquals(actualMessage, expectedMessage);
     }
 
 
     @Test
     public void testJourneyPipelineWithNoCallbacks() throws NodeProcessException {
-        journeyPipeline = new JourneyPipeline(config,createExecution,retrieveExecution);
+        journeyPipeline = new JourneyPipeline(config, createExecution, retrieveExecution);
         Mockito.when(config.pipelineKey()).thenReturn("test");
         Mockito.when(config.dashboardId()).thenReturn("");
-        TreeContext treeContext = buildThreeContext(Collections.emptyList(),null);
+        TreeContext treeContext = buildThreeContext(Collections.emptyList(), null);
         Mockito.when(createExecution.execute(treeContext)).thenReturn("testId");
         Action action = journeyPipeline.process(treeContext);
         List<Callback> callbacks = action.callbacks;
-        Assert.assertEquals(callbacks.size(),1);
+        Assert.assertEquals(callbacks.size(), 1);
     }
 
     @Test
@@ -81,16 +79,16 @@ public class JourneyPipelineTest {
         ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback("testScript");
         cbList.add(scriptTextOutputCallback);
 
-        TreeContext treeContext = buildThreeContext(cbList,2);
+        TreeContext treeContext = buildThreeContext(cbList, 2);
 
-        journeyPipeline = new JourneyPipeline(config,createExecution,retrieveExecution);
+        journeyPipeline = new JourneyPipeline(config, createExecution, retrieveExecution);
         Mockito.when(config.pipelineKey()).thenReturn("test");
         Mockito.when(config.dashboardId()).thenReturn("");
         Mockito.when(createExecution.execute(treeContext)).thenReturn("testId");
-        Mockito.when(retrieveExecution.retrieve(Mockito.any(),Mockito.any())).thenReturn("execution_completed");
+        Mockito.when(retrieveExecution.retrieve(Mockito.any(), Mockito.any())).thenReturn("execution_completed");
         Action action = journeyPipeline.process(treeContext);
         String outcome = action.outcome;
-        Assert.assertEquals(outcome,"Successful");
+        Assert.assertEquals(outcome, "Successful");
     }
 
     @Test
@@ -99,16 +97,16 @@ public class JourneyPipelineTest {
         ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback("testScript");
         cbList.add(scriptTextOutputCallback);
 
-        TreeContext treeContext = buildThreeContext(cbList,2);
+        TreeContext treeContext = buildThreeContext(cbList, 2);
 
-        journeyPipeline = new JourneyPipeline(config,createExecution,retrieveExecution);
+        journeyPipeline = new JourneyPipeline(config, createExecution, retrieveExecution);
         Mockito.when(config.pipelineKey()).thenReturn("test");
         Mockito.when(config.dashboardId()).thenReturn("");
         Mockito.when(createExecution.execute(treeContext)).thenReturn("testId");
-        Mockito.when(retrieveExecution.retrieve(Mockito.any(),Mockito.any())).thenReturn("execution_failed");
+        Mockito.when(retrieveExecution.retrieve(Mockito.any(), Mockito.any())).thenReturn("execution_failed");
         Action action = journeyPipeline.process(treeContext);
         String outcome = action.outcome;
-        Assert.assertEquals(outcome,"Error");
+        Assert.assertEquals(outcome, "Error");
     }
 
     @Test
@@ -117,29 +115,29 @@ public class JourneyPipelineTest {
         ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback("testScript");
         cbList.add(scriptTextOutputCallback);
 
-        TreeContext treeContext = buildThreeContext(cbList,2);
+        TreeContext treeContext = buildThreeContext(cbList, 2);
 
-        journeyPipeline = new JourneyPipeline(config,createExecution,retrieveExecution);
+        journeyPipeline = new JourneyPipeline(config, createExecution, retrieveExecution);
         Mockito.when(config.pipelineKey()).thenReturn("test");
         Mockito.when(config.dashboardId()).thenReturn("");
         Mockito.when(createExecution.execute(treeContext)).thenReturn("testId");
-        Mockito.when(retrieveExecution.retrieve(Mockito.any(),Mockito.any())).thenReturn("execution_timeout");
+        Mockito.when(retrieveExecution.retrieve(Mockito.any(), Mockito.any())).thenReturn("execution_timeout");
         Action action = journeyPipeline.process(treeContext);
         String outcome = action.outcome;
-        Assert.assertEquals(outcome,"Timeout");
+        Assert.assertEquals(outcome, "Timeout");
     }
 
 
-    private TreeContext buildThreeContext(List<Callback> callbacks,Integer counter) {
+    private TreeContext buildThreeContext(List<Callback> callbacks, Integer counter) {
         return new TreeContext(retrieveSharedState(counter), json(object()),
                 new ExternalRequestContext.Builder().build(), callbacks
                 , Optional.of("mockUserId"));
     }
 
     private JsonValue retrieveSharedState(Integer counter) {
-        if(counter!=null){
+        if (counter != null) {
             return json(object(field(USERNAME, "demo"),
-                    field(Constants.COUNTER,counter)));
+                    field(Constants.COUNTER, counter)));
         }
         return json(object(field(USERNAME, "demo")));
     }

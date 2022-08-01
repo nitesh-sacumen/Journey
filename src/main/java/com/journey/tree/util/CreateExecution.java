@@ -17,20 +17,18 @@ import org.apache.http.util.EntityUtils;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.auth.node.api.NodeProcessException;
 import org.forgerock.openam.auth.node.api.TreeContext;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.net.SocketTimeoutException;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 public class CreateExecution {
     private static final Logger logger = LoggerFactory.getLogger(CreateExecution.class);
-    String pipelineKey, dashboardId = null, uniqueId, deviceId = null, forgeRockSessionId = null, apiAccessToken = null, phoneNumber = null,
-            methodName = null, executionId = null;
+    String pipelineKey, dashboardId = null, uniqueId, deviceId = null, apiAccessToken = null, journeyPhoneNumber = null,
+            journeyEmail = null, forgerockPhoneNumber = null, forgerockEmail = null, methodName = null, executionId = null;
     JSONObject delivery;
     HttpConnectionClient httpConnectionClient;
 
@@ -41,7 +39,7 @@ public class CreateExecution {
 
     public String execute(TreeContext context) throws NodeProcessException {
         initializeVariables(context);
-        prepareDeliveryObject(context);
+        prepareDeliveryObject();
         executionId = createExecution(context);
         return executionId;
     }
@@ -56,57 +54,72 @@ public class CreateExecution {
         if (sharedState.get(Constants.DEVICE_ID).isNotNull()) {
             deviceId = sharedState.get(Constants.DEVICE_ID).asString();
         }
-        if (sharedState.get(Constants.FORGEROCK_SESSION_ID).isNotNull()) {
-            forgeRockSessionId = sharedState.get(Constants.FORGEROCK_SESSION_ID).asString();
-        }
-        if (sharedState.get(Constants.API_ACCESS_TOKEN).isNotNull()) {
-            apiAccessToken = sharedState.get(Constants.API_ACCESS_TOKEN).asString();
+        if (sharedState.get(Constants.JOURNEY_API_TOKEN).isNotNull()) {
+            apiAccessToken = sharedState.get(Constants.JOURNEY_API_TOKEN).asString();
         }
         if (sharedState.get(Constants.JOURNEY_PHONE_NUMBER).isNotNull()) {
-            phoneNumber = sharedState.get(Constants.JOURNEY_PHONE_NUMBER).asString();
+            journeyPhoneNumber = sharedState.get(Constants.JOURNEY_PHONE_NUMBER).asString();
+        }
+        if (sharedState.get(Constants.JOURNEY_EMAIL).isNotNull()) {
+            journeyEmail = sharedState.get(Constants.JOURNEY_EMAIL).asString();
+        }
+        if (sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).isNotNull()) {
+            forgerockPhoneNumber = sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).asString();
+        }
+        if (sharedState.get(Constants.FORGEROCK_EMAIL).isNotNull()) {
+            forgerockEmail = sharedState.get(Constants.FORGEROCK_EMAIL).asString();
         }
         if (sharedState.get(Constants.METHOD_NAME).isNotNull()) {
             methodName = sharedState.get(Constants.METHOD_NAME).asString();
         }
     }
 
-    private void prepareDeliveryObject(TreeContext context) throws NodeProcessException {
-        JsonValue sharedState = context.sharedState;
+    private void prepareDeliveryObject() throws NodeProcessException {
         delivery = new JSONObject();
         try {
             if (methodName.equalsIgnoreCase(Constants.FACIAL_BIOMETRIC)) {
-                if (sharedState.get(Constants.JOURNEY_PHONE_NUMBER).isNotNull() ||
-                        sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).isNotNull()) {
-                    String phoneNumber = sharedState.get(Constants.JOURNEY_PHONE_NUMBER).isNotNull() ?
-                            sharedState.get(Constants.JOURNEY_PHONE_NUMBER).asString() : sharedState.get(Constants.FORGEROCK_PHONE_NUMBER).asString();
+
+                if (journeyPhoneNumber == null &&
+                        journeyEmail == null &&
+                        forgerockPhoneNumber == null &&
+                        forgerockEmail == null) {
+                    logger.debug("atleast one among journey phone number,journey email, forgerock phone number, forgerock email should have a value to proceed");
+                    throw new NodeProcessException("atleast one among journey phone number,journey email, forgerock phone number, forgerock email should have a value to proceed");
+                }
+
+                if (journeyPhoneNumber != null ||
+                        forgerockPhoneNumber != null) {
+                    String phoneNumber = journeyPhoneNumber != null ?
+                            journeyPhoneNumber : forgerockPhoneNumber;
                     delivery.put("method", "sms");
                     delivery.put("phoneNumber", phoneNumber);
                 } else {
-                    String email = sharedState.get(Constants.JOURNEY_EMAIL).isNotNull() ?
-                            sharedState.get(Constants.JOURNEY_EMAIL).asString() : sharedState.get(Constants.FORGEROCK_EMAIL).asString();
+                    String email = journeyEmail != null ?
+                            journeyEmail : forgerockEmail;
                     delivery.put("method", "email");
                     delivery.put("email", email);
                 }
-            } else {
+            } else if (methodName.equalsIgnoreCase(Constants.MOBILE_APP)) {
+                if (deviceId == null) {
+                    logger.debug("mobile device id is required to proceed");
+                    throw new NodeProcessException("mobile device id is required to proceed");
+                }
                 delivery.put("method", "push-notification");
                 delivery.put("deviceId", deviceId);
             }
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
-            throw new NodeProcessException("Exception is:" + e);
+            throw new NodeProcessException("Exception is:" + e.getLocalizedMessage());
         }
     }
 
     private String createExecution(TreeContext context) throws NodeProcessException {
-        JsonValue sharedState = context.sharedState;
         HttpEntity entityResponse;
-        String result, customerJourneyId, executionId = null;
-        JSONObject jsonResponse, jsonObj, customer, session;
+        String result, executionId = null;
+        JSONObject jsonResponse, jsonObj, customer;
         HttpPost httpPost;
         StringEntity stringEntity;
         CloseableHttpResponse response;
-        ArrayList<String> urls;
-        JSONArray callbackUrls;
         Integer responseCode;
         try (CloseableHttpClient httpclient = httpConnectionClient.getHttpClient(context)) {
             jsonObj = new JSONObject();
@@ -118,19 +131,7 @@ public class CreateExecution {
             if (dashboardId != null) {
                 jsonObj.put("dashboardId", dashboardId);
             }
-            urls = new ArrayList<>();
-            urls.add("https://localhost");
-            callbackUrls = new JSONArray(urls);
-            jsonObj.put("callbackUrls", callbackUrls);
             jsonObj.put("language", "en-US");
-            session = new JSONObject();
-            if (forgeRockSessionId != null) {
-                session.put("externalRef", forgeRockSessionId);
-            } else if (sharedState.get(Constants.CUSTOMER_JOURNEY_ID).isNotNull()) {
-                customerJourneyId = sharedState.get(Constants.CUSTOMER_JOURNEY_ID).asString();
-                session.put("id", customerJourneyId);
-            }
-            jsonObj.put("session", session);
             httpPost = httpConnectionClient.createPostRequest(Constants.CREATE_EXECUTION_URL);
             httpPost.addHeader("Accept", "application/json");
             httpPost.addHeader("Authorization", "Bearer " + apiAccessToken);

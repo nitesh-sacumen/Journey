@@ -12,7 +12,6 @@ import com.google.inject.assistedinject.Assisted;
 import com.journey.tree.config.Constants;
 import com.journey.tree.util.CreateExecution;
 import com.journey.tree.util.RetrieveExecution;
-import com.sun.identity.authentication.callbacks.HiddenValueCallback;
 import com.sun.identity.authentication.callbacks.ScriptTextOutputCallback;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.annotations.sm.Attribute;
@@ -31,7 +30,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 
-import static com.journey.tree.nodes.JourneyEnrollmentLookUp.setCounterValue;
 import static org.forgerock.openam.auth.node.api.Action.send;
 
 @Node.Metadata(outcomeProvider = JourneyPipeline.OutcomeProvider.class, configClass = JourneyPipeline.Config.class)
@@ -86,7 +84,7 @@ public class JourneyPipeline implements Node {
         }
         JsonValue sharedState = context.sharedState;
         Integer counter = setCounterValue(context);
-        String executionId;
+        String executionId, type = "", executionStatus;
         try {
             if (counter == 1) {
                 sharedState.put(Constants.PIPELINE_KEY, config.pipelineKey());
@@ -100,40 +98,52 @@ public class JourneyPipeline implements Node {
                     ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f1());
                     cbList.add(scriptTextOutputCallback);
                 } else {
-                   throw new NodeProcessException("Execution id not created");
+                    throw new NodeProcessException("Execution id not created");
                 }
 
                 return send(ImmutableList.copyOf(cbList)).build();
 
             } else if (counter == 2) {
+                if (sharedState.get(Constants.TYPE).isNotNull()) {
+                    type = sharedState.get(Constants.TYPE).asString();
+                }
                 List<Callback> cbList = new ArrayList<>();
-                ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f2(sharedState.get(Constants.TYPE).asString()));
+                ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f2(type));
                 cbList.add(scriptTextOutputCallback);
                 return send(ImmutableList.copyOf(cbList)).build();
+            } else if (counter == 3) {
+                executionId = sharedState.get(Constants.EXECUTION_ID).asString();
+                executionStatus = retrieveExecution.retrieve(context, executionId);
+                sharedState.put(Constants.EXECUTION_STATUS, executionStatus);
+                List<Callback> cbList = new ArrayList<>();
+                ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f3());
+                cbList.add(scriptTextOutputCallback);
+                return send(ImmutableList.copyOf(cbList)).build();
+            } else if (counter == 4) {
+                sharedState.put(Constants.COUNTER, null);
+                executionId = sharedState.get(Constants.EXECUTION_ID).asString();
+                executionStatus = sharedState.get(Constants.EXECUTION_STATUS).asString();
+                if (executionStatus.equals(Constants.EXECUTION_COMPLETED)) {
+                    logger.debug(executionId + " successfully completed");
+                    sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_COMPLETED);
+                    return goTo(Outcome.Successful).replaceSharedState(sharedState).build();
+                } else if (executionStatus.equals(Constants.EXECUTION_FAILED)) {
+                    logger.debug(executionId + " failed");
+                    sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_FAILED);
+                    return goTo(Outcome.Failure).replaceSharedState(sharedState).build();
+                } else {
+                    logger.debug(executionId + " has a timeout");
+                    sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_TIMEOUT);
+                    return goTo(Outcome.Timeout).replaceSharedState(sharedState).build();
+                }
             }
-            sharedState.put(Constants.COUNTER, null);
-            String type;
-            type = sharedState.get(Constants.TYPE).asString();
-            String executionStatus;
-            executionId = sharedState.get(Constants.EXECUTION_ID).asString();
-            executionStatus = retrieveExecution.retrieve(context, executionId);
-            if (executionStatus.equals(Constants.EXECUTION_COMPLETED)) {
-                logger.debug(type + " with id " + executionId + " successfully completed");
-                sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_COMPLETED);
-                return goTo(Outcome.Successful).replaceSharedState(sharedState).build();
-            } else if (executionStatus.equals(Constants.EXECUTION_FAILED)) {
-                logger.debug(type + " with id " + executionId + " failed");
-                sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_FAILED);
-                return goTo(Outcome.Error).replaceSharedState(sharedState).build();
-            } else {
-                logger.debug(type + " with id " + executionId + " has a timeout");
-                sharedState.put(Constants.EXECUTION_STATUS, Constants.EXECUTION_TIMEOUT);
-                return goTo(Outcome.Timeout).replaceSharedState(sharedState).build();
-            }
+
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: ", e);
         }
+        logger.debug("An error occurred, please contact administrator");
+        return goTo(Outcome.Failure).replaceSharedState(sharedState).build();
     }
 
     String f1() {
@@ -146,11 +156,21 @@ public class JourneyPipeline implements Node {
      */
     String f2(String type) {
         return "document.getElementById('loginButton_0').style.display = 'none';\r\n" +
+                "if('" + type + "'.length>0){\r\n" +
                 "var header = document.createElement('h3');\r\n" +
                 "header.id='waitHeader';\r\n" +
                 "header.style.textAlign='center';\r\n" +
                 "header.innerHTML ='" + type + " initiated, please wait.';\r\n" +
                 "document.body.appendChild(header);\r\n" +
+                "}\r\n" +
+                "document.getElementById('loginButton_0').click();\r\n";
+    }
+
+    String f3() {
+        return "document.getElementById('loginButton_0').style.display = 'none';\r\n" +
+                "if (document.contains(document.getElementById('waitHeader'))) {\n" +
+                "document.getElementById('waitHeader').remove();\n" +
+                "}\n" +
                 "document.getElementById('loginButton_0').click();\r\n";
     }
 
@@ -167,9 +187,9 @@ public class JourneyPipeline implements Node {
          */
         Successful,
         /**
-         * selection for Error.
+         * selection for Failure.
          */
-        Error,
+        Failure,
         /**
          * selection for Timeout.
          */
@@ -188,8 +208,22 @@ public class JourneyPipeline implements Node {
         public List<Outcome> getOutcomes(PreferredLocales locales, JsonValue nodeAttributes) {
             ResourceBundle bundle = locales.getBundleInPreferredLocale(JourneyPipeline.BUNDLE, JourneyPipeline.OutcomeProvider.class.getClassLoader());
             return ImmutableList.of(new Outcome(JourneyPipeline.Outcome.Successful.name(), bundle.getString("successful")),
-                    new Outcome(JourneyPipeline.Outcome.Error.name(), bundle.getString("error")),
+                    new Outcome(JourneyPipeline.Outcome.Failure.name(), bundle.getString("failure")),
                     new Outcome(JourneyPipeline.Outcome.Timeout.name(), bundle.getString("timeout")));
         }
+    }
+
+    public static Integer setCounterValue(TreeContext context) {
+        Integer counter;
+        JsonValue sharedState = context.sharedState;
+        if (sharedState.get(Constants.COUNTER).isNull()) {
+            counter = 1;
+            sharedState.put(Constants.COUNTER, counter);
+        } else {
+            counter = sharedState.get(Constants.COUNTER).asInteger();
+            counter++;
+            sharedState.put(Constants.COUNTER, counter);
+        }
+        return counter;
     }
 }

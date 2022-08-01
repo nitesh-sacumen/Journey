@@ -43,11 +43,9 @@ public class RetrieveExecution {
 
     public String retrieve(TreeContext context, String executionId) throws NodeProcessException {
         JsonValue sharedState = context.sharedState;
-        if (sharedState.get(Constants.API_ACCESS_TOKEN).isNotNull()) {
-            apiAccessToken = sharedState.get(Constants.API_ACCESS_TOKEN).asString();
+        if (sharedState.get(Constants.JOURNEY_API_TOKEN).isNotNull()) {
+            apiAccessToken = sharedState.get(Constants.JOURNEY_API_TOKEN).asString();
         }
-        Integer retrieveTimeout = sharedState.get(Constants.RETRIEVE_TIMEOUT).asInteger();
-        Integer retrieveDelay = sharedState.get(Constants.RETRIEVE_DELAY).asInteger();
         Boolean flag;
         sharedState.put(Constants.RETRIEVE_API_CONNECTION, true);
         try {
@@ -56,13 +54,13 @@ public class RetrieveExecution {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: " + e);
         }
-        for (Integer j = 1; j <= retrieveTimeout; j++) {
+        for (Integer j = 1; j <= 60; j++) {
             flag = checkExecutionResult(context, executionId);
             if (flag) {
                 break;
             }
             try {
-                Thread.sleep(retrieveDelay);
+                Thread.sleep(3000);
             } catch (Exception e) {
                 logger.error(Arrays.toString(e.getStackTrace()));
             }

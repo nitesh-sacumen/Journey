@@ -91,8 +91,6 @@
         <artifactId>axis2-transport-http</artifactId>
         <version>1.6.2</version>
     </dependency>
-
-
         <dependency>
         <groupId>commons-logging</groupId>
         <artifactId>commons-logging</artifactId>
@@ -143,7 +141,6 @@
             <version>4.12</version>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
 
 </project>

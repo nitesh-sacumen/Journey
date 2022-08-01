@@ -1,6 +1,6 @@
 /**
  * @author Sacumen(www.sacumen.com)
- * This class will check whether the unique id exists at journey or not
+ * This class will make customer lookup api call and will store the response
  */
 
 package com.journey.tree.util;
@@ -33,15 +33,14 @@ public class JourneyCustomerLookUp {
         this.httpConnectionClient = httpConnectionClient;
     }
 
-    public JSONArray customerLookUp(TreeContext context) throws NodeProcessException {
+    public void customerLookUp(TreeContext context) throws NodeProcessException {
         JSONObject jsonResponse;
-        JSONArray enrollments = null;
         Integer responseCode;
         JsonValue sharedState = context.sharedState;
         try (CloseableHttpClient httpclient = httpConnectionClient.getHttpClient(context)) {
             String uniqueId = sharedState.get(Constants.UNIQUE_ID).asString();
-            String accountId = sharedState.get(Constants.ACCOUNT_ID).asString();
-            String token = sharedState.get(Constants.API_ACCESS_TOKEN).asString();
+            String accountId = sharedState.get(Constants.JOURNEY_ACCOUNT_ID).asString();
+            String token = sharedState.get(Constants.JOURNEY_API_TOKEN).asString();
             HttpGet httpGet = httpConnectionClient.createGetRequest(Constants.ENROLLMENTS_CHECK_URL + "?unique_id=" + uniqueId + "&account_id=" + accountId);
             httpGet.addHeader("Authorization", "Bearer " + token);
             httpGet.addHeader("Accept", "application/json");
@@ -57,25 +56,19 @@ public class JourneyCustomerLookUp {
                 logger.debug(errorObj.toString());
                 throw new NodeProcessException("Api responded with errors, please check logs for errors.");
             }
-            enrollments = populateJourneyCustomerDetails(context, jsonResponse);
+            populateJourneyCustomerDetails(context, jsonResponse);
+            sharedState.put(Constants.JOURNEY_USER, jsonResponse.toString());
         } catch (ConnectTimeoutException | SocketTimeoutException e) {
             logger.error(e.getMessage());
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: " + e);
         }
-
-        return enrollments;
     }
 
-    private JSONArray populateJourneyCustomerDetails(TreeContext context, JSONObject jsonResponse) {
+    private void populateJourneyCustomerDetails(TreeContext context, JSONObject jsonResponse) {
         JsonValue sharedState = context.sharedState;
-        JSONArray enrollments = null;
         try {
-            if (jsonResponse.has("id")) {
-                String customerJourneyId = (String) jsonResponse.get("id");
-                sharedState.put(Constants.CUSTOMER_JOURNEY_ID, customerJourneyId);
-            }
             if (jsonResponse.has("phoneNumbers")) {
                 JSONArray phoneNumbers = (JSONArray) jsonResponse.get("phoneNumbers");
                 if (phoneNumbers.length() > 0) {
@@ -97,12 +90,8 @@ public class JourneyCustomerLookUp {
                 String email = jsonResponse.getString("email");
                 sharedState.put(Constants.JOURNEY_EMAIL, email);
             }
-            if (jsonResponse.has("enrollments") && jsonResponse.getJSONArray("enrollments").length() > 0) {
-                enrollments = jsonResponse.getJSONArray("enrollments");
-            }
         } catch (Exception e) {
             logger.error(Arrays.toString(e.getStackTrace()));
         }
-        return enrollments;
     }
 }
