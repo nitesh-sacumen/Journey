@@ -9,13 +9,13 @@ Once downloaded, copy the jar file to the ../web-container/webapps/openam/WEB-IN
  
 ## Steps
 
-1) Configure Maven to be able to access the OpenAM repositories
+1) Configure Maven in machine to setup the OpenAM repositories
 
-2) Setup a Journey Maven Project and run mvn package command.
+2) Clone a Journey Maven Project from github and run mvn package command.
 
-3) The project will generate a .jar file containing our custom nodes. i.e. Journey-ForgeRock-Integration-1.0.jar
+3) The project will generate a .jar file under target folder of repository containing our custom nodes. i.e. Journey-ForgeRock-Integration-1.0.jar.
 
-5) Copy the Journey-ForgeRock-Integration-1.0.jar file to the WEB-INF/lib/ folder where AM is deployed
+5) Copy the Journey-ForgeRock-Integration-1.0.jar file to the WEB-INF/lib/ folder where AM is deployed(ex: tomcatDir/webapps/openam/WEB-INF/lib/).
 
 6) Restart the AM for the new plug-in to become available.
 
@@ -27,49 +27,21 @@ Below are the nodes that will be available after deploying the jar file:
 ### Journey Enrollment Look Up
 ```js
 ** checking whether username exists in forgerock
-** roles of forgerock user are fetched, admin group name is provided—if username is part of that admin group members list then facial biometrics will be preferred enrollment/authentication—but if admin user is not having facial biometrics enrolled but enrolled for mobile app then authentication will be done using mobile app
-** if yes then checking whether same username exists at journey
-** if yes, fetch enrollments
-** if for authentication, required enrollment is there then connect with has enrollments with that method for authentication
-** if no/sufficient enrollments then connect with no enrollments
-** if user does not exist at journey then also connect with no enrollments path
+** setting username or email as uniqueId depending upon unique identifier selected
+** making journey customer lookup call and storing the result in the shared context key name journeyUser
 ```
 
 Configuration is:
 ```js
-* Refresh Token
-
-* Time To Live
+* API Token
 
 * Account Id
 
 * Unique Identifier
 
-* Admin Username
-
-* Admin Password
-
-* Group Name
-
-* Retrieve Timeout
-
-* Forgerock Host Url
-
-* Request Timeout
-
-* Retrieve Delay
-
 ```
+<img width="134" alt="j1" src="https://user-images.githubusercontent.com/106667867/182442353-bd3af57e-98b0-4a52-9510-8e728d181a85.png">
 
-<img width="261" alt="Screenshot 2022-07-21 at 1 23 29 AM" src="https://user-images.githubusercontent.com/106667867/180070027-39f7b6c3-b44f-41b3-b2e8-78596dc30db9.png">
-<img width="266" alt="Screenshot 2022-07-21 at 1 23 49 AM" src="https://user-images.githubusercontent.com/106667867/180070065-5e4ee732-52ee-42a4-a17d-65ee9514f23b.png">
-
-
-
-### Error Message Node
-```js
-This node will display error to the end user.
-```
  
 ### Journey Pipeline
 ```js
@@ -80,29 +52,24 @@ Configuration is:
 ```js
 * Pipeline Key : Key for Journey pipeline.
 
-* Dashboard ID : Dashboard ID
+* Dashboard ID : Dashboard ID(Optional)
 ```
 
 <img width="267" alt="Screenshot 2022-07-21 at 1 24 03 AM" src="https://user-images.githubusercontent.com/106667867/180070156-4c4e434b-6068-460d-aa4a-63688cfec60d.png">
 
-
-### Logic To Determine Method
+### Scripted Decesion Node:
 ```js
-This node will set method choice (FACIAL_BIOMETRIC/MOBILE_APP) for authentication.
+** Scripted decision node has certain configurable parameters that should configured before running the script which includes forgerockUrlPrefix, forgerockAdminGroupName, forgerockAdminUsername, forgerockAdminPassword, adminUserPriorityArray, otherUserPriorityArray.
+** Script file should also make call to the get forgerock session details api and store the session id in the sharedState with the key name forgerockSessionId.
+** Script file should also has a field in the sharedState with the key name “type” that can have either of two values “Authentication” or “Enrollment” depending upon has enrollment or no enrollment path.
 ```
-
-
-### Outcome Node
-```js
-This node will redirect flow basis of customized outcomes(success/failure/timeout).
-```
-
 
 
 ## Configure the trees as follows
 
 ### Journey Flow :
-<img width="483" alt="Picture 1" src="https://user-images.githubusercontent.com/106667867/180070558-23d97114-24a6-4aa8-94f1-a94ac424018d.png">
+
+<img width="483" alt="j2" src="https://user-images.githubusercontent.com/106667867/182442810-590796a5-c5bd-4307-aec6-6f3645ec31b1.png">
 
 
 ## Set Logging Level
@@ -111,6 +78,8 @@ This node will redirect flow basis of customized outcomes(success/failure/timeou
 ```js
 DEPLOYMENT-->SERVERS-->LocalInstance-->Debugging
 ```
+Logs will be available under userDir/openam/var/debug/debug.out (Example: In mac - home/user/openam/var/debug/debug.out)
+
 
 ## Configure the trees as follows
 ```js
