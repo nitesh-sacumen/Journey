@@ -28,7 +28,8 @@ import java.util.Arrays;
 public class CreateExecution {
     private static final Logger logger = LoggerFactory.getLogger(CreateExecution.class);
     String pipelineKey, dashboardId = null, uniqueId, deviceId = null, apiAccessToken = null, journeyPhoneNumber = null,
-            journeyEmail = null, forgerockPhoneNumber = null, forgerockEmail = null, methodName = null, executionId = null;
+            journeyEmail = null, forgerockPhoneNumber = null, forgerockEmail = null, methodName = null, executionId = null,
+            forgerockSessionId = null, journeySessionId = null, externalRef;
     JSONObject delivery;
     HttpConnectionClient httpConnectionClient;
 
@@ -72,6 +73,13 @@ public class CreateExecution {
         if (sharedState.get(Constants.METHOD_NAME).isNotNull()) {
             methodName = sharedState.get(Constants.METHOD_NAME).asString();
         }
+        if (sharedState.get(Constants.FORGEROCK_SESSION_ID).isNotNull()) {
+            forgerockSessionId = sharedState.get(Constants.FORGEROCK_SESSION_ID).asString();
+        }
+        if (sharedState.get(Constants.JOURNEY_SESSION_ID).isNotNull()) {
+            journeySessionId = sharedState.get(Constants.JOURNEY_SESSION_ID).asString();
+        }
+
     }
 
     private void prepareDeliveryObject() throws NodeProcessException {
@@ -116,7 +124,7 @@ public class CreateExecution {
     private String createExecution(TreeContext context) throws NodeProcessException {
         HttpEntity entityResponse;
         String result, executionId = null;
-        JSONObject jsonResponse, jsonObj, customer;
+        JSONObject jsonResponse, jsonObj, customer, sessionObject;
         HttpPost httpPost;
         StringEntity stringEntity;
         CloseableHttpResponse response;
@@ -132,6 +140,12 @@ public class CreateExecution {
                 jsonObj.put("dashboardId", dashboardId);
             }
             jsonObj.put("language", "en-US");
+            if (forgerockSessionId != null || journeySessionId != null) {
+                sessionObject = new JSONObject();
+                externalRef = journeySessionId != null ? journeySessionId : forgerockSessionId;
+                sessionObject.put("externalRef", externalRef);
+                jsonObj.put("session", sessionObject);
+            }
             httpPost = httpConnectionClient.createPostRequest(Constants.CREATE_EXECUTION_URL);
             httpPost.addHeader("Accept", "application/json");
             httpPost.addHeader("Authorization", "Bearer " + apiAccessToken);

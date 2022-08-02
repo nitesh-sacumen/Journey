@@ -1,5 +1,5 @@
 /**
- * @author Sacumen(www.sacumen.com) EnrollmentStatusCheck node with
+ * @author Sacumen(www.sacumen.com) JourneyEnrollmentLookUp node with
  * single outcome. This node will check for user existence in the forgerock and
  * will make journey customer lookup api call and store the result in the key name
  * journeyUser

@@ -16,7 +16,7 @@ public final class Constants {
     public static final String CREATE_EXECUTION_URL = "https://app.journeyid.io/api/system/executions";
     public static final String JOURNEY_API_TOKEN = "journey_api_token";
     public static final String JOURNEY_ACCOUNT_ID = "journey_account_id";
-    public static final String METHOD_NAME = "method_name";
+    public static final String METHOD_NAME = "methodName";
     public static final String FACIAL_BIOMETRIC = "facial-biometrics";
     public static final String MOBILE_APP = "mobile-app";
     //public static final String ONE_TIME_PASSWORD = "one-time-password";
@@ -40,4 +40,6 @@ public final class Constants {
     public static final String RETRIEVE_API_CONNECTION = "retrieve_api_connection";
     public static final String EXECUTION_ID = "execution_id";
     public static final String JOURNEY_USER = "journeyUser";
+    public static final String FORGEROCK_SESSION_ID = "forgerockSessionId";
+    public static final String JOURNEY_SESSION_ID = "journeySessionId";
 }
