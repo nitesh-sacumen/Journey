@@ -27,10 +27,12 @@ public class HttpConnectionClient {
         logger.debug("requesting http client connection client open");
         JsonValue sharedState = context.sharedState;
         Integer timeout;
+        Integer requestTimeout = Constants.REQUEST_TIMEOUT;
+        Integer retrieveDelay = Constants.RETRIEVE_DELAY;
         if (sharedState.get(Constants.RETRIEVE_API_CONNECTION).isNotNull() && sharedState.get(Constants.RETRIEVE_API_CONNECTION).asBoolean()) {
-            timeout = 3;
+            timeout = retrieveDelay / 1000;
         } else {
-            timeout = 30;
+            timeout = requestTimeout;
         }
         RequestConfig config = RequestConfig.custom().setConnectTimeout(timeout * 1000).setConnectionRequestTimeout(timeout * 1000).setSocketTimeout(timeout * 1000).build();
         HttpClientBuilder clientBuilder = HttpClientBuilder.create();

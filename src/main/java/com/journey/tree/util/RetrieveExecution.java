@@ -54,13 +54,15 @@ public class RetrieveExecution {
             logger.error(Arrays.toString(e.getStackTrace()));
             throw new NodeProcessException("Exception is: " + e);
         }
-        for (Integer j = 1; j <= 60; j++) {
+        Integer retrieveTimeout = Constants.RETRIEVE_TIMEOUT;
+        Integer retrieveDelay = Constants.RETRIEVE_DELAY;
+        for (Integer j = 1; j <= retrieveTimeout; j++) {
             flag = checkExecutionResult(context, executionId);
             if (flag) {
                 break;
             }
             try {
-                Thread.sleep(3000);
+                Thread.sleep(retrieveDelay);
             } catch (Exception e) {
                 logger.error(Arrays.toString(e.getStackTrace()));
             }

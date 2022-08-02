@@ -42,4 +42,8 @@ public final class Constants {
     public static final String JOURNEY_USER = "journeyUser";
     public static final String FORGEROCK_SESSION_ID = "forgerockSessionId";
     public static final String JOURNEY_SESSION_ID = "journeySessionId";
+    public static final Integer RETRIEVE_TIMEOUT = 60;
+    public static final Integer RETRIEVE_DELAY = 3000;
+    public static final Integer REQUEST_TIMEOUT = 30;
+
 }

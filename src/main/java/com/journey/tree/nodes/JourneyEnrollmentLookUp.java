@@ -80,7 +80,6 @@ public class JourneyEnrollmentLookUp extends SingleOutcomeNode {
         logger.debug("*********************JourneyEnrollmentLookUp node********************");
         JsonValue sharedState = context.sharedState;
         String username = sharedState.get(USERNAME).asString();
-
         String journeyAccountId = config.journeyAccountId();
         sharedState.put(Constants.JOURNEY_ACCOUNT_ID, journeyAccountId);
         String journeyApiToken = config.journeyApiToken();
