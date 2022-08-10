@@ -7,6 +7,7 @@
 package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -23,7 +24,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.net.SocketTimeoutException;
-import java.util.Arrays;
 
 public class CreateExecution {
     private static final Logger logger = LoggerFactory.getLogger(CreateExecution.class);
@@ -116,7 +116,7 @@ public class CreateExecution {
                 delivery.put("deviceId", deviceId);
             }
         } catch (Exception e) {
-            logger.error(Arrays.toString(e.getStackTrace()));
+            logger.error(ExceptionUtils.getStackTrace(e));
             throw new NodeProcessException("Exception is:" + e.getLocalizedMessage());
         }
     }
@@ -158,10 +158,9 @@ public class CreateExecution {
             entityResponse = response.getEntity();
             result = EntityUtils.toString(entityResponse);
             jsonResponse = new JSONObject(result);
-            if (jsonResponse.has("errors")) {
-                JSONObject errorObj = (JSONObject) jsonResponse.get("errors");
-                logger.debug(errorObj.toString());
-                throw new NodeProcessException("Api responded with errors, please check logs for errors.");
+            if (responseCode != 260) {
+                logger.debug("execution id not created as: " + jsonResponse);
+                throw new NodeProcessException("execution id not created");
             }
             if (jsonResponse.has("id")) {
                 executionId = (String) jsonResponse.get("id");
@@ -169,7 +168,7 @@ public class CreateExecution {
         } catch (ConnectTimeoutException | SocketTimeoutException e) {
             logger.error(e.getMessage());
         } catch (Exception e) {
-            logger.error(Arrays.toString(e.getStackTrace()));
+            logger.error(ExceptionUtils.getStackTrace(e));
             throw new NodeProcessException("Exception is: " + e);
         }
         return executionId;

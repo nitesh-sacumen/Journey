@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import javax.security.auth.callback.Callback;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -139,8 +138,8 @@ public class JourneyPipeline implements Node {
             }
 
         } catch (Exception e) {
-            logger.error(Arrays.toString(e.getStackTrace()));
-            throw new NodeProcessException("Exception is: ", e);
+            logger.error("Exception is: " + e.getLocalizedMessage());
+            throw new NodeProcessException("Exception is: " + e.getLocalizedMessage());
         }
         logger.debug("An error occurred, please contact administrator");
         return goTo(Outcome.Failure).replaceSharedState(sharedState).build();

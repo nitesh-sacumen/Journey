@@ -7,6 +7,7 @@
 package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -25,7 +26,6 @@ import java.net.SocketTimeoutException;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Arrays;
 
 public class RetrieveExecution {
     private static final Logger logger = LoggerFactory.getLogger(RetrieveExecution.class);
@@ -51,7 +51,7 @@ public class RetrieveExecution {
         try {
             Thread.sleep(3000);
         } catch (Exception e) {
-            logger.error(Arrays.toString(e.getStackTrace()));
+            logger.error(ExceptionUtils.getStackTrace(e));
             throw new NodeProcessException("Exception is: " + e);
         }
         Integer retrieveTimeout = Constants.RETRIEVE_TIMEOUT;
@@ -64,7 +64,7 @@ public class RetrieveExecution {
             try {
                 Thread.sleep(retrieveDelay);
             } catch (Exception e) {
-                logger.error(Arrays.toString(e.getStackTrace()));
+                logger.error(ExceptionUtils.getStackTrace(e));
             }
         }
         sharedState.put(Constants.RETRIEVE_API_CONNECTION, false);
@@ -89,6 +89,9 @@ public class RetrieveExecution {
             result = EntityUtils.toString(entityResponse);
             if (result != null) {
                 JSONObject jsonResponse = new JSONObject(result);
+                if (responseCode != 262) {
+                    logger.debug("execution id details not fetched as: " + jsonResponse);
+                }
                 if (jsonResponse.has("errors")) {
                     JSONObject errorObj = (JSONObject) jsonResponse.get("errors");
                     logger.debug(errorObj.toString());
@@ -118,7 +121,7 @@ public class RetrieveExecution {
         } catch (ConnectTimeoutException | SocketTimeoutException e) {
             logger.error(e.getMessage());
         } catch (Exception e) {
-            logger.error(Arrays.toString(e.getStackTrace()));
+            logger.error(ExceptionUtils.getStackTrace(e));
             throw new NodeProcessException("Exception is: " + e);
         }
         return false;
@@ -129,7 +132,7 @@ public class RetrieveExecution {
             Instant.from(DateTimeFormatter.ISO_INSTANT.parse(date));
             return true;
         } catch (DateTimeParseException e) {
-            logger.error(Arrays.toString(e.getStackTrace()));
+            logger.error(ExceptionUtils.getStackTrace(e));
         }
         return false;
     }

@@ -8,6 +8,7 @@ package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
 import com.sun.identity.idm.AMIdentity;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.auth.node.api.NodeProcessException;
 import org.forgerock.openam.auth.node.api.TreeContext;
@@ -15,7 +16,6 @@ import org.forgerock.openam.core.CoreWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.Set;
 
 import static org.forgerock.openam.auth.node.api.SharedStateConstants.REALM;
@@ -38,7 +38,7 @@ public class ForgerockUser {
             String telephoneNumber = telephoneNumberList.stream().findFirst().orElse(null);
             sharedState.put(Constants.FORGEROCK_PHONE_NUMBER, telephoneNumber);
         } catch (Exception e) {
-            logger.error(Arrays.toString(e.getStackTrace()));
+            logger.error(ExceptionUtils.getStackTrace(e));
             throw new NodeProcessException("Exception is: " + e);
         }
         return true;

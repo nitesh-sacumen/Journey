@@ -12,6 +12,7 @@ import com.google.inject.assistedinject.Assisted;
 import com.journey.tree.config.Constants;
 import com.journey.tree.util.ForgerockUser;
 import com.journey.tree.util.JourneyCustomerLookUp;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.annotations.sm.Attribute;
 import org.forgerock.openam.auth.node.api.*;
@@ -99,7 +100,7 @@ public class JourneyEnrollmentLookUp extends SingleOutcomeNode {
             }
             journeyCustomerLookUp.customerLookUp(context);
         } catch (Exception e) {
-            logger.error(Arrays.toString(e.getStackTrace()));
+            logger.error(ExceptionUtils.getStackTrace(e));
             throw new NodeProcessException("Exception is: " + e.getLocalizedMessage());
         }
         return goToNext().build();

@@ -6,6 +6,7 @@
 package com.journey.tree.util;
 
 import com.journey.tree.config.Constants;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -22,7 +23,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.net.SocketTimeoutException;
-import java.util.Arrays;
 
 public class JourneyCustomerLookUp {
     private static final Logger logger = LoggerFactory.getLogger(JourneyCustomerLookUp.class);
@@ -51,6 +51,9 @@ public class JourneyCustomerLookUp {
             HttpEntity entityResponse = response.getEntity();
             String result = EntityUtils.toString(entityResponse);
             jsonResponse = new JSONObject(result);
+            if (responseCode != 262) {
+                logger.debug("customer details not fetched as: " + jsonResponse);
+            }
             if (jsonResponse.has("errors")) {
                 JSONObject errorObj = (JSONObject) jsonResponse.get("errors");
                 logger.debug(errorObj.toString());
@@ -61,7 +64,7 @@ public class JourneyCustomerLookUp {
         } catch (ConnectTimeoutException | SocketTimeoutException e) {
             logger.error(e.getMessage());
         } catch (Exception e) {
-            logger.error(Arrays.toString(e.getStackTrace()));
+            logger.error(ExceptionUtils.getStackTrace(e));
             throw new NodeProcessException("Exception is: " + e);
         }
     }
@@ -91,7 +94,7 @@ public class JourneyCustomerLookUp {
                 sharedState.put(Constants.JOURNEY_EMAIL, email);
             }
         } catch (Exception e) {
-            logger.error(Arrays.toString(e.getStackTrace()));
+            logger.error(ExceptionUtils.getStackTrace(e));
         }
     }
 }
