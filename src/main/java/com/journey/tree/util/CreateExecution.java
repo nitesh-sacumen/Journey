@@ -70,50 +70,33 @@ public class CreateExecution {
         if (sharedState.get(Constants.FORGEROCK_EMAIL).isNotNull()) {
             forgerockEmail = sharedState.get(Constants.FORGEROCK_EMAIL).asString();
         }
-        if (sharedState.get(Constants.METHOD_NAME).isNotNull()) {
-            methodName = sharedState.get(Constants.METHOD_NAME).asString();
-        }
         if (sharedState.get(Constants.FORGEROCK_SESSION_ID).isNotNull()) {
             forgerockSessionId = sharedState.get(Constants.FORGEROCK_SESSION_ID).asString();
         }
         if (sharedState.get(Constants.JOURNEY_SESSION_ID).isNotNull()) {
             journeySessionId = sharedState.get(Constants.JOURNEY_SESSION_ID).asString();
         }
-
     }
 
     private void prepareDeliveryObject() throws NodeProcessException {
         delivery = new JSONObject();
         try {
-            if (methodName.equalsIgnoreCase(Constants.FACIAL_BIOMETRIC)) {
-
-                if (journeyPhoneNumber == null &&
-                        journeyEmail == null &&
-                        forgerockPhoneNumber == null &&
-                        forgerockEmail == null) {
-                    logger.debug("atleast one among journey phone number,journey email, forgerock phone number, forgerock email should have a value to proceed");
-                    throw new NodeProcessException("atleast one among journey phone number,journey email, forgerock phone number, forgerock email should have a value to proceed");
-                }
-
-                if (journeyPhoneNumber != null ||
-                        forgerockPhoneNumber != null) {
-                    String phoneNumber = journeyPhoneNumber != null ?
-                            journeyPhoneNumber : forgerockPhoneNumber;
-                    delivery.put("method", "sms");
-                    delivery.put("phoneNumber", phoneNumber);
-                } else {
-                    String email = journeyEmail != null ?
-                            journeyEmail : forgerockEmail;
-                    delivery.put("method", "email");
-                    delivery.put("email", email);
-                }
-            } else if (methodName.equalsIgnoreCase(Constants.MOBILE_APP)) {
-                if (deviceId == null) {
-                    logger.debug("mobile device id is required to proceed");
-                    throw new NodeProcessException("mobile device id is required to proceed");
-                }
+            if (deviceId != null) {
                 delivery.put("method", "push-notification");
                 delivery.put("deviceId", deviceId);
+            } else if (journeyPhoneNumber != null || forgerockPhoneNumber != null) {
+                String phoneNumber = journeyPhoneNumber != null ?
+                        journeyPhoneNumber : forgerockPhoneNumber;
+                delivery.put("method", "sms");
+                delivery.put("phoneNumber", phoneNumber);
+            } else if (journeyEmail != null || forgerockEmail != null) {
+                String email = journeyEmail != null ?
+                        journeyEmail : forgerockEmail;
+                delivery.put("method", "email");
+                delivery.put("email", email);
+            } else {
+                logger.debug("atleast one among device id, journey phone number, forgerock phone number, journey email, forgerock email should have a value to proceed");
+                throw new NodeProcessException("atleast one among device id, journey phone number, forgerock phone number, journey email, forgerock email should have a value to proceed");
             }
         } catch (Exception e) {
             logger.error(ExceptionUtils.getStackTrace(e));
@@ -140,7 +123,7 @@ public class CreateExecution {
                 jsonObj.put("dashboardId", dashboardId);
             }
             jsonObj.put("language", "en-US");
-            if (forgerockSessionId != null || journeySessionId != null) {
+            if (journeySessionId != null || forgerockSessionId != null) {
                 sessionObject = new JSONObject();
                 externalRef = journeySessionId != null ? journeySessionId : forgerockSessionId;
                 sessionObject.put("externalRef", externalRef);

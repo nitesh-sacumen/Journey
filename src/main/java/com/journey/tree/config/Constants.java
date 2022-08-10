@@ -16,17 +16,12 @@ public final class Constants {
     public static final String CREATE_EXECUTION_URL = "https://app.journeyid.io/api/system/executions";
     public static final String JOURNEY_API_TOKEN = "journey_api_token";
     public static final String JOURNEY_ACCOUNT_ID = "journey_account_id";
-    public static final String METHOD_NAME = "methodName";
-    public static final String FACIAL_BIOMETRIC = "facial-biometrics";
-    public static final String MOBILE_APP = "mobile-app";
-    //public static final String ONE_TIME_PASSWORD = "one-time-password";
     public static final String JOURNEY_PHONE_NUMBER = "journey_phone_number";
     public static final String FORGEROCK_PHONE_NUMBER = "forgerock_phone_number";
     public static final String FORGEROCK_EMAIL = "forgerock_email";
     public static final String JOURNEY_EMAIL = "journey_email";
     public static final String DEVICE_ID = "device_id";
     public static final String CUSTOMER_LOOKUP_RESPONSE_CODE = "customer_lookup_response_code";
-    public static final String TYPE = "type";
     public static final String PIPELINE_KEY = "pipeline_key";
     public static final String DASHBOARD_ID = "dashboard_id";
     public static final String EXECUTION_COMPLETED = "execution_completed";

@@ -83,7 +83,7 @@ public class JourneyPipeline implements Node {
         }
         JsonValue sharedState = context.sharedState;
         Integer counter = setCounterValue(context);
-        String executionId, type = "", executionStatus;
+        String executionId, executionStatus;
         try {
             if (counter == 1) {
                 sharedState.put(Constants.PIPELINE_KEY, config.pipelineKey());
@@ -103,11 +103,8 @@ public class JourneyPipeline implements Node {
                 return send(ImmutableList.copyOf(cbList)).build();
 
             } else if (counter == 2) {
-                if (sharedState.get(Constants.TYPE).isNotNull()) {
-                    type = sharedState.get(Constants.TYPE).asString();
-                }
                 List<Callback> cbList = new ArrayList<>();
-                ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f2(type));
+                ScriptTextOutputCallback scriptTextOutputCallback = new ScriptTextOutputCallback(f2());
                 cbList.add(scriptTextOutputCallback);
                 return send(ImmutableList.copyOf(cbList)).build();
             } else if (counter == 3) {
@@ -153,15 +150,13 @@ public class JourneyPipeline implements Node {
     /**
      * This function will create return a javascript based script .
      */
-    String f2(String type) {
+    String f2() {
         return "document.getElementById('loginButton_0').style.display = 'none';\r\n" +
-                "if('" + type + "'.length>0){\r\n" +
                 "var header = document.createElement('h3');\r\n" +
                 "header.id='waitHeader';\r\n" +
                 "header.style.textAlign='center';\r\n" +
-                "header.innerHTML ='" + type + " initiated, please wait.';\r\n" +
+                "header.innerHTML ='Process initiated, please wait.';\r\n" +
                 "document.body.appendChild(header);\r\n" +
-                "}\r\n" +
                 "document.getElementById('loginButton_0').click();\r\n";
     }
 
